@@ -14,6 +14,8 @@
 #include <string>
 #include <iostream>
 
+#include "Window.h"
+
 #pragma comment(lib, "D3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3dcompiler.lib")
@@ -45,53 +47,6 @@ void ThrowIfFailed(HRESULT hr)
 	}
 }
 
-LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-	if (uMsg == WM_DESTROY)
-	{
-		PostQuitMessage(0);
-		return 0;
-	}
-	return DefWindowProc(hWnd, uMsg, wParam, lParam);
-}
-
-HWND SetupWindow(HINSTANCE hInstance, int width, int height)
-{
-	WNDCLASSEX wcex = {
-		sizeof(WNDCLASSEX),
-		CS_HREDRAW | CS_VREDRAW,
-		WindowProc,
-		0, 0,
-		hInstance,
-		LoadIcon(hInstance, IDI_APPLICATION),
-		LoadCursor(nullptr, IDC_ARROW),
-		(HBRUSH)COLOR_WINDOW,
-		nullptr,
-		"d3d12test",
-		LoadIcon(hInstance, IDI_APPLICATION)
-	};
-
-	if (!RegisterClassEx(&wcex))
-	{
-		std::cerr << "RegisterClassEx: " << GetLastErrorMessage();
-		return nullptr;
-	}
-
-	auto hWnd = CreateWindow("d3d12test", TEXT("d3d12test_window"), WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU, CW_USEDEFAULT, CW_USEDEFAULT, width, height, nullptr, nullptr, hInstance, nullptr);
-	if (!hWnd)
-	{
-		std::cerr << "CreateWindow: " << GetLastErrorMessage();
-		return nullptr;
-	}
-
-	return hWnd;
-}
-
-void ShutdownWindow(HINSTANCE hInstance, HWND hWnd)
-{
-	UnregisterClass("d3d12test", hInstance);
-	CloseWindow(hWnd);
-}
 
 struct Graphics
 {
@@ -595,15 +550,14 @@ int MainImpl(int, char**)
 {
 	auto hInstance = GetModuleHandle(nullptr);
 
-	auto hWnd = SetupWindow(hInstance, cScreenWidth, cScreenHeight);
-	if (!hWnd)
-	{
-		return 1;
-	}
+	Window window;
+	window.Setup(GetModuleHandle(nullptr), _TEXT("d3d12test"));
 
-	SetupGraphics(hWnd);
+	SetupGraphics(window.Handle());
 
-	ShowWindow(hWnd, SW_SHOWNORMAL);
+	window.Move(300, 200);
+	window.Resize(1280, 720);
+	window.Open();
 
 	SetupScene();
 
@@ -628,7 +582,8 @@ int MainImpl(int, char**)
 
 	ShutdownScene();
 	ShutdownGraphics();
-	ShutdownWindow(hInstance, hWnd);
+
+	window.Close();
 
 	return 0;
 }
