@@ -14,7 +14,10 @@
 #include <string>
 #include <iostream>
 
+#include "common.h"
 #include "Window.h"
+#include "Device.h"
+#include "ScreenView.h"
 
 #pragma comment(lib, "D3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -28,42 +31,25 @@ const int cScreenWidth = 1280;
 const int cScreenHeight = 720;
 const int cBufferCount = 2;
 
-tstring GetLastErrorMessage()
-{
-	auto err = GetLastError();
-	LPVOID msg;
-	FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&msg, 0, nullptr);
-	std::string msgStr((LPTSTR)msg);
-	LocalFree(msg);
-	return msgStr;
-}
-
-void ThrowIfFailed(HRESULT hr)
-{
-	if (FAILED(hr))
-	{
-		auto err = GetLastErrorMessage();
-		throw std::exception(err.c_str());
-	}
-}
-
 
 struct Graphics
 {
-	ComPtr<ID3D12Device> pDevice;
-	ComPtr<IDXGISwapChain3> pSwapChain;
+	Device device;
+	ScreenView screen;
+
+	//ComPtr<IDXGISwapChain3> pSwapChain;
 	ComPtr<ID3D12CommandQueue> pCommandQueue;
 
-	int frameIndex;
+	//int frameIndex;
 
-	ComPtr<ID3D12DescriptorHeap> pRtvHeap;
-	UINT rtvDescriptorSize;
+	//ComPtr<ID3D12DescriptorHeap> pRtvHeap;
+	//UINT rtvDescriptorSize;
 
-	ComPtr<ID3D12DescriptorHeap> pDsvHeap;
-	UINT dsvDescriptorSize;
+	//ComPtr<ID3D12DescriptorHeap> pDsvHeap;
+	//UINT dsvDescriptorSize;
 
-	ComPtr<ID3D12Resource> pRenderTargetViews[cBufferCount];
-	ComPtr<ID3D12Resource> pDepthStencilView;
+	//ComPtr<ID3D12Resource> pRenderTargetViews[cBufferCount];
+	//ComPtr<ID3D12Resource> pDepthStencilView;
 
 	ComPtr<ID3D12CommandAllocator> pCommandAllocator;
 	
@@ -80,123 +66,51 @@ Graphics gfx;
 
 bool SetupGraphics(HWND hWnd)
 {
-	auto dxgiFactoryFlags = 0U;
+	gfx.device.EnableDebugLayer();
+	gfx.device.Create();
 
-#if defined(_DEBUG)
-	{
-		ComPtr<ID3D12Debug> pDebugController;
-		if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&pDebugController))))
-		{
-			pDebugController->EnableDebugLayer();
-			dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
-		}
-	}
-#endif
-
-	ComPtr<IDXGIFactory4> pFactory;
-	ThrowIfFailed(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&pFactory)));
-
-	ThrowIfFailed(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&gfx.pDevice)));
+	auto pDevice = gfx.device.Get();
 
 	{
 		D3D12_COMMAND_QUEUE_DESC desc = {};
 		desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 		desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
 
-		ThrowIfFailed(gfx.pDevice->CreateCommandQueue(&desc, IID_PPV_ARGS(&gfx.pCommandQueue)));
+		ThrowIfFailed(pDevice->CreateCommandQueue(&desc, IID_PPV_ARGS(&gfx.pCommandQueue)));
 	}
 
 	{
-		DXGI_SWAP_CHAIN_DESC desc = {};
-		desc.BufferCount = cBufferCount;
-		desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		desc.BufferDesc.Width = cScreenWidth;
-		desc.BufferDesc.Height = cScreenHeight;
-		desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-		desc.OutputWindow = hWnd;
-		desc.SampleDesc.Count = 1;
-		desc.Windowed = TRUE;
-
-		ComPtr<IDXGISwapChain> pSwapChain;
-		ThrowIfFailed(pFactory->CreateSwapChain(gfx.pCommandQueue.Get(), &desc, &pSwapChain));
-		ThrowIfFailed(pSwapChain->QueryInterface(IID_PPV_ARGS(&gfx.pSwapChain)));
-
-		gfx.frameIndex = gfx.pSwapChain->GetCurrentBackBufferIndex();
-	}
-
-	{
-		D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-		desc.NumDescriptors = cBufferCount;
-		desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-		desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-
-		ThrowIfFailed(gfx.pDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&gfx.pRtvHeap)));
-
-		gfx.rtvDescriptorSize = gfx.pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-
-		desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-		
-		ThrowIfFailed(gfx.pDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&gfx.pDsvHeap)));
-
-		gfx.dsvDescriptorSize = gfx.pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-	}
-
-	{
-		auto handle = gfx.pRtvHeap->GetCPUDescriptorHandleForHeapStart();
-
-		D3D12_RENDER_TARGET_VIEW_DESC desc = {};
-		desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-		desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-
-		for (UINT i = 0; i < cBufferCount; ++i)
-		{
-			ThrowIfFailed(gfx.pSwapChain->GetBuffer(i, IID_PPV_ARGS(&gfx.pRenderTargetViews[i])));
-			gfx.pDevice->CreateRenderTargetView(gfx.pRenderTargetViews[i].Get(), &desc, handle);
-			handle.ptr += gfx.rtvDescriptorSize;
-		}
-	}
-
-	{
-		D3D12_HEAP_PROPERTIES prop = {};
-		prop.Type = D3D12_HEAP_TYPE_DEFAULT;
-		prop.CreationNodeMask = 1;
-		prop.VisibleNodeMask = 1;
-
-		D3D12_RESOURCE_DESC desc = {};
-		desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		ScreenViewDesc desc;
 		desc.Width = cScreenWidth;
 		desc.Height = cScreenHeight;
-		desc.DepthOrArraySize = 1;
-		desc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-		desc.SampleDesc.Count = 1;
-		desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+		desc.OutputWindow = hWnd;
 
-		D3D12_CLEAR_VALUE clearValue = {};
-		clearValue.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-		clearValue.DepthStencil.Depth = 1.0f;
-		clearValue.DepthStencil.Stencil = 0;
-
-		ThrowIfFailed(gfx.pDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_DEPTH_WRITE, &clearValue, IID_PPV_ARGS(&gfx.pDepthStencilView)));
-
-		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-		dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-
-		gfx.pDevice->CreateDepthStencilView(gfx.pDepthStencilView.Get(), &dsvDesc, gfx.pDsvHeap->GetCPUDescriptorHandleForHeapStart());
+		gfx.screen.Create(&gfx.device, gfx.pCommandQueue.Get(), desc);
 	}
 
 	{
-		ThrowIfFailed(gfx.pDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&gfx.pCommandAllocator)));
+		gfx.screen.CreateRenderTargetViews();
 	}
 
 	{
-		ThrowIfFailed(gfx.pDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, gfx.pCommandAllocator.Get(), nullptr, IID_PPV_ARGS(&gfx.pCommandList)));
+		DepthStencilViewDesc desc;
+		desc.Width = cScreenWidth;
+		desc.Height = cScreenHeight;
+
+		gfx.screen.CreateDepthStencilView(desc);
+	}
+
+	{
+		ThrowIfFailed(pDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&gfx.pCommandAllocator)));
+	}
+
+	{
+		ThrowIfFailed(pDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, gfx.pCommandAllocator.Get(), nullptr, IID_PPV_ARGS(&gfx.pCommandList)));
 		gfx.pCommandList->Close();
 	}
 
 	{
-		ThrowIfFailed(gfx.pDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&gfx.pFence)));
+		ThrowIfFailed(pDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&gfx.pFence)));
 		gfx.fenceValue = 1;
 
 		gfx.fenceEvent = CreateEventEx(nullptr, FALSE, 0, EVENT_ALL_ACCESS);
@@ -271,6 +185,8 @@ ComPtr<ID3DBlob> CompileShader(LPCWSTR filepath, const TCHAR* entryPoint, const 
 
 bool SetupScene()
 {
+	auto pDevice = gfx.device.Get();
+
 	{
 		Vertex vertices[] =
 		{
@@ -293,7 +209,7 @@ bool SetupScene()
 		desc.SampleDesc.Count = 1;
 		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-		ThrowIfFailed(gfx.pDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&scene.pVertexBuffer)));
+		ThrowIfFailed(pDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&scene.pVertexBuffer)));
 
 		UINT8* pData;
 		ThrowIfFailed(scene.pVertexBuffer->Map(0, nullptr, (void**)&pData));
@@ -311,7 +227,7 @@ bool SetupScene()
 		desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 
-		ThrowIfFailed(gfx.pDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&scene.pCbvHeap)));
+		ThrowIfFailed(pDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&scene.pCbvHeap)));
 	}
 
 	{
@@ -329,13 +245,13 @@ bool SetupScene()
 		desc.SampleDesc.Count = 1;
 		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-		ThrowIfFailed(gfx.pDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&scene.pConstantBuffer)));
+		ThrowIfFailed(pDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&scene.pConstantBuffer)));
 
 		D3D12_CONSTANT_BUFFER_VIEW_DESC viewDesc = {};
 		viewDesc.BufferLocation = scene.pConstantBuffer->GetGPUVirtualAddress();
 		viewDesc.SizeInBytes = sizeof(scene.transformBuffer);
 
-		gfx.pDevice->CreateConstantBufferView(&viewDesc, scene.pCbvHeap->GetCPUDescriptorHandleForHeapStart());
+		pDevice->CreateConstantBufferView(&viewDesc, scene.pCbvHeap->GetCPUDescriptorHandleForHeapStart());
 
 		// リソースを解放するまでMapしっぱなしでOK
 		ThrowIfFailed(scene.pConstantBuffer->Map(0, nullptr, (void**)&scene.pCbvData));
@@ -376,7 +292,7 @@ bool SetupScene()
 
 		ThrowIfFailed(D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &pSignature, &pError));
 
-		ThrowIfFailed(gfx.pDevice->CreateRootSignature(0, pSignature->GetBufferPointer(), pSignature->GetBufferSize(), IID_PPV_ARGS(&scene.pRootSignature)));
+		ThrowIfFailed(pDevice->CreateRootSignature(0, pSignature->GetBufferPointer(), pSignature->GetBufferSize(), IID_PPV_ARGS(&scene.pRootSignature)));
 	}
 
 	{
@@ -428,7 +344,7 @@ bool SetupScene()
 		desc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 		desc.SampleDesc.Count = 1;
 
-		ThrowIfFailed(gfx.pDevice->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&scene.pPipelineState)));
+		ThrowIfFailed(pDevice->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&scene.pPipelineState)));
 	}
 
 	scene.rotateAngle = 0.f;
@@ -451,7 +367,7 @@ void WaitForCommandExecution()
 	}
 
 	// バックバッファのインデックスを更新
-	gfx.frameIndex = gfx.pSwapChain->GetCurrentBackBufferIndex();
+	gfx.screen.UpdateFrameIndex();
 }
 
 void Draw()
@@ -478,15 +394,13 @@ void Draw()
 
 	D3D12_RESOURCE_BARRIER barrier = {};
 	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	barrier.Transition.pResource = gfx.pRenderTargetViews[gfx.frameIndex].Get();
+	barrier.Transition.pResource = gfx.screen.RenderTargetView(gfx.screen.FrameIndex());
 	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
 	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	pCmdList->ResourceBarrier(1, &barrier);
 
-	auto handleRTV = gfx.pRtvHeap->GetCPUDescriptorHandleForHeapStart();
-	handleRTV.ptr += (gfx.frameIndex * gfx.rtvDescriptorSize);
-
-	auto handleDSV = gfx.pDsvHeap->GetCPUDescriptorHandleForHeapStart();
+	auto handleRTV = gfx.screen.CurrentRtvHandle();
+	auto handleDSV = gfx.screen.DsvHandle();
 
 	pCmdList->OMSetRenderTargets(1, &handleRTV, FALSE, &handleDSV);
 
@@ -509,7 +423,7 @@ void Draw()
 	ID3D12CommandList* ppCmdLists[] = { pCmdList.Get() };
 	gfx.pCommandQueue->ExecuteCommandLists(_countof(ppCmdLists), ppCmdLists);
 
-	gfx.pSwapChain->Present(1, 0);
+	gfx.screen.Get()->Present(1, 0);
 
 	WaitForCommandExecution();
 }
@@ -531,19 +445,10 @@ void ShutdownGraphics()
 
 	CloseHandle(gfx.fenceEvent);
 
-	for (auto i = 0; i < cBufferCount; ++i)
-	{
-		gfx.pRenderTargetViews[i].Reset();
-	}
-
-	gfx.pDepthStencilView.Reset();
-
-	gfx.pSwapChain.Reset();
 	gfx.pFence.Reset();
 	gfx.pCommandList.Reset();
 	gfx.pCommandAllocator.Reset();
 	gfx.pCommandQueue.Reset();
-	gfx.pDevice.Reset();
 }
 
 int MainImpl(int, char**)

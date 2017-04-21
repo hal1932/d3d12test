@@ -15,7 +15,7 @@ namespace
 }
 
 Window::Window()
-	: mHandle(nullptr)
+	: handle_(nullptr)
 {}
 
 
@@ -27,7 +27,7 @@ Window::~Window()
 
 HRESULT Window::Setup(HINSTANCE hInstance, LPCTSTR title)
 {
-	if (mHandle != nullptr)
+	if (handle_ != nullptr)
 	{
 		Close();
 	}
@@ -54,7 +54,7 @@ HRESULT Window::Setup(HINSTANCE hInstance, LPCTSTR title)
 		return result;
 	}
 
-	mHandle = CreateWindow(
+	handle_ = CreateWindow(
 		title,
 		title,
 		WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
@@ -63,13 +63,13 @@ HRESULT Window::Setup(HINSTANCE hInstance, LPCTSTR title)
 		nullptr,
 		hInstance,
 		nullptr);
-	if (mHandle == nullptr)
+	if (handle_ == nullptr)
 	{
 		return S_FALSE;
 	}
 
-	mInstanceHandle = hInstance;
-	mTitle = title;
+	instanceHandle_ = hInstance;
+	title_ = title;
 
 	return S_OK;
 }
@@ -77,12 +77,12 @@ HRESULT Window::Setup(HINSTANCE hInstance, LPCTSTR title)
 HRESULT Window::Move(int x, int y)
 {
 	RECT rect;
-	if (!GetWindowRect(mHandle, &rect))
+	if (!GetWindowRect(handle_, &rect))
 	{
 		return S_FALSE;
 	}
 
-	if (!MoveWindow(mHandle, x, y, rect.right - rect.left, rect.bottom - rect.top, TRUE))
+	if (!MoveWindow(handle_, x, y, rect.right - rect.left, rect.bottom - rect.top, TRUE))
 	{
 		return S_FALSE;
 	}
@@ -93,12 +93,12 @@ HRESULT Window::Move(int x, int y)
 HRESULT Window::Resize(int width, int height)
 {
 	RECT rect;
-	if (!GetWindowRect(mHandle, &rect))
+	if (!GetWindowRect(handle_, &rect))
 	{
 		return S_FALSE;
 	}
 
-	if (!MoveWindow(mHandle, rect.left, rect.top, width, height, TRUE))
+	if (!MoveWindow(handle_, rect.left, rect.top, width, height, TRUE))
 	{
 		return S_FALSE;
 	}
@@ -109,7 +109,7 @@ HRESULT Window::Resize(int width, int height)
 
 HRESULT Window::Open(int nCmdShow)
 {
-	if (!ShowWindow(mHandle, nCmdShow))
+	if (!ShowWindow(handle_, nCmdShow))
 	{
 		return S_FALSE;
 	}
@@ -119,24 +119,24 @@ HRESULT Window::Open(int nCmdShow)
 
 HRESULT Window::Close()
 {
-	if (mHandle == nullptr)
+	if (handle_ == nullptr)
 	{
 		return S_OK;
 	}
 
-	if (!UnregisterClass(mTitle, mInstanceHandle))
+	if (!UnregisterClass(title_, instanceHandle_))
 	{
 		return S_FALSE;
 	}
 
-	if (!CloseWindow(mHandle))
+	if (!CloseWindow(handle_))
 	{
 		return S_FALSE;
 	}
 
-	mHandle = nullptr;
-	mInstanceHandle = nullptr;
-	mTitle = nullptr;
+	handle_ = nullptr;
+	instanceHandle_ = nullptr;
+	title_ = nullptr;
 
 	return S_OK;
 }

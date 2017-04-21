@@ -14,11 +14,11 @@ public:
 	HRESULT Close();
 
 public:
-	const HWND Handle() { return mHandle; }
+	const HWND Handle() { return handle_; }
 
 private:
-	HWND mHandle;
-	HINSTANCE mInstanceHandle;
-	LPCTSTR mTitle;
+	HWND handle_;
+	HINSTANCE instanceHandle_;
+	LPCTSTR title_;
 };
 
