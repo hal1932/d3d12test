@@ -20,6 +20,8 @@
 #include "ScreenContext.h"
 #include "GpuFence.h"
 #include "CommandQueue.h"
+#include "CommandContainer.h"
+#include "CommandList.h"
 
 #pragma comment(lib, "D3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -54,9 +56,11 @@ struct Graphics
 	//ComPtr<ID3D12Resource> pRenderTargetViews[cBufferCount];
 	//ComPtr<ID3D12Resource> pDepthStencilView;
 
-	ComPtr<ID3D12CommandAllocator> pCommandAllocator;
-	
-	ComPtr<ID3D12GraphicsCommandList> pCommandList;
+	//ComPtr<ID3D12CommandAllocator> pCommandAllocator;
+	//ComPtr<ID3D12GraphicsCommandList> pCommandList;
+
+	CommandContainer commandContainer;
+	CommandList* pCommandList;
 
 	//ComPtr<ID3D12Fence> pFence;
 	//UINT64 fenceValue;
@@ -85,9 +89,7 @@ bool SetupGraphics(HWND hWnd)
 		gfx.screen.Create(&gfx.device, &gfx.commandQueue, desc);
 	}
 
-	{
-		gfx.screen.CreateRenderTargetViews();
-	}
+	gfx.screen.CreateRenderTargetViews();
 
 	{
 		DepthStencilViewDesc desc;
@@ -97,15 +99,11 @@ bool SetupGraphics(HWND hWnd)
 		gfx.screen.CreateDepthStencilView(desc);
 	}
 
-	{
-		ThrowIfFailed(pDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&gfx.pCommandAllocator)));
-	}
+	gfx.commandContainer.Create(&gfx.device);
 
-	{
-		ThrowIfFailed(pDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, gfx.pCommandAllocator.Get(), nullptr, IID_PPV_ARGS(&gfx.pCommandList)));
-		gfx.pCommandList->Close();
-	}
-
+	gfx.pCommandList = gfx.commandContainer.AddGraphicsList();
+	gfx.pCommandList->Close();
+	
 	{
 		gfx.viewPort = {};
 		gfx.viewPort.Width = (FLOAT)cScreenWidth;
@@ -352,10 +350,10 @@ void Draw()
 	scene.transformBuffer.World = DirectX::XMMatrixRotationY(scene.rotateAngle);
 	memcpy(scene.pCbvData, &scene.transformBuffer, sizeof(scene.transformBuffer));
 
-	gfx.pCommandAllocator->Reset();
-	gfx.pCommandList->Reset(gfx.pCommandAllocator.Get(), scene.pPipelineState.Get());
+	gfx.commandContainer.ClearState();
+	gfx.pCommandList->Open(scene.pPipelineState.Get());
 
-	auto& pCmdList = gfx.pCommandList;
+	auto pCmdList = gfx.pCommandList->AsGraphicsList();
 
 	pCmdList->SetDescriptorHeaps(1, scene.pCbvHeap.GetAddressOf());
 	pCmdList->SetGraphicsRootSignature(scene.pRootSignature.Get());
@@ -393,9 +391,9 @@ void Draw()
 	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
 	pCmdList->ResourceBarrier(1, &barrier);
 
-	pCmdList->Close();
+	gfx.pCommandList->Close();
 
-	gfx.commandQueue.Enqueue(pCmdList.Get());
+	gfx.commandQueue.SubmitSingleList(pCmdList);
 
 	gfx.screen.Get()->Present(1, 0);
 
@@ -416,9 +414,6 @@ void ShutdownScene()
 void ShutdownGraphics()
 {
 	WaitForCommandExecution();
-
-	gfx.pCommandList.Reset();
-	gfx.pCommandAllocator.Reset();
 }
 
 int MainImpl(int, char**)

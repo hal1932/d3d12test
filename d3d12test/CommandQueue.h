@@ -14,8 +14,8 @@ public:
 
 	HRESULT Create(Device* pDevice);
 
-	void Enqueue(ID3D12CommandList* pCommandList);
-	void Enqueue(int count, ID3D12CommandList* pCommandLists[]);
+	void SubmitSingleList(ID3D12CommandList* pCommandList);
+	void SubmitMultipleLists(int count, ID3D12CommandList* pCommandLists[]);
 
 	HRESULT WaitForExecution();
 
