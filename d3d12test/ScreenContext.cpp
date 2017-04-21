@@ -31,7 +31,7 @@ ScreenContext::~ScreenContext()
 	SafeRelease(&pSwapChain_);
 }
 
-void ScreenContext::Create(Device* pDevice, CommandQueue* pCommandQueue, const ScreenViewDesc& desc)
+void ScreenContext::Create(Device* pDevice, CommandQueue* pCommandQueue, const ScreenContextDesc& desc)
 {
 	DXGI_SWAP_CHAIN_DESC rawDesc = {};
 

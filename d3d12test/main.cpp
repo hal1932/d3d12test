@@ -77,7 +77,7 @@ bool SetupGraphics(HWND hWnd)
 	gfx.commandQueue.Create(&gfx.device);
 
 	{
-		ScreenViewDesc desc;
+		ScreenContextDesc desc;
 		desc.Width = cScreenWidth;
 		desc.Height = cScreenHeight;
 		desc.OutputWindow = hWnd;

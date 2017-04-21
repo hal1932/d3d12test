@@ -6,7 +6,7 @@
 class Device;
 class CommandQueue;
 
-struct ScreenViewDesc
+struct ScreenContextDesc
 {
 	int BufferCount;
 	DXGI_FORMAT Format;
@@ -15,7 +15,7 @@ struct ScreenViewDesc
 	HWND OutputWindow;
 	bool Windowed;
 
-	ScreenViewDesc()
+	ScreenContextDesc()
 		: BufferCount(2),
 		Format(DXGI_FORMAT_R8G8B8A8_UNORM_SRGB),
 		Width(0), Height(0),
@@ -64,7 +64,7 @@ public:
 	UINT FrameIndex() { return frameIndex_; }
 	ID3D12Resource* RenderTargetView(UINT index) { return rtvViewPtrs_[index]; }
 
-	void Create(Device* pDevice, CommandQueue* pCommandQueue, const ScreenViewDesc& desc);
+	void Create(Device* pDevice, CommandQueue* pCommandQueue, const ScreenContextDesc& desc);
 
 	HRESULT CreateRenderTargetViews();
 	HRESULT CreateDepthStencilView(const DepthStencilViewDesc& desc);
@@ -74,7 +74,7 @@ public:
 private:
 	Device* pDevice_;
 
-	ScreenViewDesc desc_;
+	ScreenContextDesc desc_;
 	IDXGISwapChain3* pSwapChain_;
 	
 	UINT frameIndex_;
