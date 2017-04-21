@@ -18,7 +18,7 @@ public:
 	CommandContainer();
 	~CommandContainer();
 
-	ID3D12CommandAllocator* Allocator() { return pCommandAllocator_; }
+	ID3D12CommandAllocator* NativePtr() { return pCommandAllocator_; }
 	SubmitType Type() { return type_; }
 
 	HRESULT Create(Device* pDevice, SubmitType type = SubmitType::Direct);

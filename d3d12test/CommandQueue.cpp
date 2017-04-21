@@ -22,7 +22,7 @@ HRESULT CommandQueue::Create(Device* pDevice)
 
 	HRESULT result;
 
-	result = pDevice->Get()->CreateCommandQueue(&rawDesc, IID_PPV_ARGS(&pCommandQueue_));
+	result = pDevice->NativePtr()->CreateCommandQueue(&rawDesc, IID_PPV_ARGS(&pCommandQueue_));
 	if (FAILED(result))
 	{
 		return result;
@@ -56,7 +56,7 @@ HRESULT CommandQueue::WaitForExecution()
 
 	pGpuFence_->IncrementValue();
 
-	result = pCommandQueue_->Signal(pGpuFence_->Get(), pGpuFence_->CurrentValue());
+	result = pCommandQueue_->Signal(pGpuFence_->NativePtr(), pGpuFence_->CurrentValue());
 	if (FAILED(result))
 	{
 		return result;

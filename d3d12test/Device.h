@@ -7,7 +7,7 @@ public:
 	Device();
 	~Device();
 
-	ID3D12Device* Get() { return pDevice_; }
+	ID3D12Device* NativePtr() { return pDevice_; }
 
 	bool IsDebugEnabled() { return (pDebug_ != nullptr); }
 	

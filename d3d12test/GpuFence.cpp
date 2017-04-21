@@ -18,7 +18,7 @@ HRESULT GpuFence::Create(Device* pDevice)
 {
 	HRESULT result;
 
-	result = pDevice->Get()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&pFence_));
+	result = pDevice->NativePtr()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&pFence_));
 	if (FAILED(result))
 	{
 		return result;

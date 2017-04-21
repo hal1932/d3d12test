@@ -17,10 +17,10 @@ HRESULT CommandList::Create(Device* pDevice)
 {
 	HRESULT result;
 
-	result = pDevice->Get()->CreateCommandList(
+	result = pDevice->NativePtr()->CreateCommandList(
 		0,
 		static_cast<D3D12_COMMAND_LIST_TYPE>(pParent_->Type()),
-		pParent_->Allocator(),
+		pParent_->NativePtr(),
 		nullptr,
 		IID_PPV_ARGS(&pNativeList_));
 	if (FAILED(result))
@@ -36,7 +36,7 @@ void CommandList::Open(ID3D12PipelineState* pPipelineState)
 	switch (pParent_->Type())
 	{
 	case CommandContainer::SubmitType::Direct:
-		static_cast<ID3D12GraphicsCommandList*>(pNativeList_)->Reset(pParent_->Allocator(), pPipelineState);
+		static_cast<ID3D12GraphicsCommandList*>(pNativeList_)->Reset(pParent_->NativePtr(), pPipelineState);
 		break;
 
 	default:

@@ -9,7 +9,7 @@ public:
 	GpuFence();
 	~GpuFence();
 
-	ID3D12Fence* Get() { return pFence_; }
+	ID3D12Fence* NativePtr() { return pFence_; }
 	UINT64 CurrentValue() { return fenceValue_; }
 
 	HRESULT Create(Device* pDevice);

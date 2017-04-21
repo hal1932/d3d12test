@@ -10,7 +10,7 @@ public:
 	CommandQueue();
 	~CommandQueue();
 
-	ID3D12CommandQueue* Get() { return pCommandQueue_; }
+	ID3D12CommandQueue* NativePtr() { return pCommandQueue_; }
 
 	HRESULT Create(Device* pDevice);
 

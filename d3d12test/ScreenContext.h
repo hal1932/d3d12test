@@ -45,22 +45,6 @@ public:
 	ScreenContext();
 	~ScreenContext();
 
-	IDXGISwapChain3* Get() { return pSwapChain_; }
-
-	D3D12_CPU_DESCRIPTOR_HANDLE CurrentRtvHandle()
-	{
-		auto handle = pRtvHeap_->GetCPUDescriptorHandleForHeapStart();
-		handle.ptr += FrameIndex() * rtvDescriptorSize_;
-		return handle;
-	}
-
-	D3D12_CPU_DESCRIPTOR_HANDLE DsvHandle(int index = 0)
-	{
-		auto handle = pDsvHeap_->GetCPUDescriptorHandleForHeapStart();
-		handle.ptr += index * dsvDescriptorSize_;
-		return handle;
-	}
-
 	UINT FrameIndex() { return frameIndex_; }
 	ID3D12Resource* RenderTargetView(UINT index) { return rtvViewPtrs_[index]; }
 
@@ -69,7 +53,12 @@ public:
 	HRESULT CreateRenderTargetViews();
 	HRESULT CreateDepthStencilView(const DepthStencilViewDesc& desc);
 
-	void UpdateFrameIndex() { frameIndex_ = pSwapChain_->GetCurrentBackBufferIndex(); }
+	D3D12_CPU_DESCRIPTOR_HANDLE CurrentRtvHandle();
+	D3D12_CPU_DESCRIPTOR_HANDLE DsvHandle(int index = 0);
+
+	void UpdateFrameIndex();
+
+	void SwapBuffers();
 
 private:
 	Device* pDevice_;

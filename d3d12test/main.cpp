@@ -41,30 +41,10 @@ struct Graphics
 	Device device;
 	ScreenContext screen;
 
-	//ComPtr<IDXGISwapChain3> pSwapChain;
-	//ComPtr<ID3D12CommandQueue> pCommandQueue;
 	CommandQueue commandQueue;
-
-	//int frameIndex;
-
-	//ComPtr<ID3D12DescriptorHeap> pRtvHeap;
-	//UINT rtvDescriptorSize;
-
-	//ComPtr<ID3D12DescriptorHeap> pDsvHeap;
-	//UINT dsvDescriptorSize;
-
-	//ComPtr<ID3D12Resource> pRenderTargetViews[cBufferCount];
-	//ComPtr<ID3D12Resource> pDepthStencilView;
-
-	//ComPtr<ID3D12CommandAllocator> pCommandAllocator;
-	//ComPtr<ID3D12GraphicsCommandList> pCommandList;
 
 	CommandContainer commandContainer;
 	CommandList* pCommandList;
-
-	//ComPtr<ID3D12Fence> pFence;
-	//UINT64 fenceValue;
-	//HANDLE fenceEvent;
 
 	D3D12_VIEWPORT viewPort;
 	D3D12_RECT scissorRect;
@@ -75,8 +55,6 @@ bool SetupGraphics(HWND hWnd)
 {
 	gfx.device.EnableDebugLayer();
 	gfx.device.Create();
-
-	auto pDevice = gfx.device.Get();
 
 	gfx.commandQueue.Create(&gfx.device);
 
@@ -168,7 +146,7 @@ ComPtr<ID3DBlob> CompileShader(LPCWSTR filepath, const TCHAR* entryPoint, const 
 
 bool SetupScene()
 {
-	auto pDevice = gfx.device.Get();
+	auto pNativeDevice = gfx.device.NativePtr();
 
 	{
 		Vertex vertices[] =
@@ -192,7 +170,7 @@ bool SetupScene()
 		desc.SampleDesc.Count = 1;
 		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-		ThrowIfFailed(pDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&scene.pVertexBuffer)));
+		ThrowIfFailed(pNativeDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&scene.pVertexBuffer)));
 
 		UINT8* pData;
 		ThrowIfFailed(scene.pVertexBuffer->Map(0, nullptr, (void**)&pData));
@@ -210,7 +188,7 @@ bool SetupScene()
 		desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 
-		ThrowIfFailed(pDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&scene.pCbvHeap)));
+		ThrowIfFailed(pNativeDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&scene.pCbvHeap)));
 	}
 
 	{
@@ -228,13 +206,13 @@ bool SetupScene()
 		desc.SampleDesc.Count = 1;
 		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-		ThrowIfFailed(pDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&scene.pConstantBuffer)));
+		ThrowIfFailed(pNativeDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&scene.pConstantBuffer)));
 
 		D3D12_CONSTANT_BUFFER_VIEW_DESC viewDesc = {};
 		viewDesc.BufferLocation = scene.pConstantBuffer->GetGPUVirtualAddress();
 		viewDesc.SizeInBytes = sizeof(scene.transformBuffer);
 
-		pDevice->CreateConstantBufferView(&viewDesc, scene.pCbvHeap->GetCPUDescriptorHandleForHeapStart());
+		pNativeDevice->CreateConstantBufferView(&viewDesc, scene.pCbvHeap->GetCPUDescriptorHandleForHeapStart());
 
 		// ƒŠƒ\[ƒX‚ð‰ð•ú‚·‚é‚Ü‚ÅMap‚µ‚Á‚Ï‚È‚µ‚ÅOK
 		ThrowIfFailed(scene.pConstantBuffer->Map(0, nullptr, (void**)&scene.pCbvData));
@@ -275,7 +253,7 @@ bool SetupScene()
 
 		ThrowIfFailed(D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &pSignature, &pError));
 
-		ThrowIfFailed(pDevice->CreateRootSignature(0, pSignature->GetBufferPointer(), pSignature->GetBufferSize(), IID_PPV_ARGS(&scene.pRootSignature)));
+		ThrowIfFailed(pNativeDevice->CreateRootSignature(0, pSignature->GetBufferPointer(), pSignature->GetBufferSize(), IID_PPV_ARGS(&scene.pRootSignature)));
 	}
 
 	{
@@ -327,7 +305,7 @@ bool SetupScene()
 		desc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 		desc.SampleDesc.Count = 1;
 
-		ThrowIfFailed(pDevice->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&scene.pPipelineState)));
+		ThrowIfFailed(pNativeDevice->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&scene.pPipelineState)));
 	}
 
 	scene.rotateAngle = 0.f;
@@ -395,7 +373,7 @@ void Draw()
 
 	gfx.commandQueue.SubmitSingleList(pCmdList);
 
-	gfx.screen.Get()->Present(1, 0);
+	gfx.screen.SwapBuffers();
 
 	WaitForCommandExecution();
 }

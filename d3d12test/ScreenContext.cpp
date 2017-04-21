@@ -63,7 +63,7 @@ void ScreenContext::Create(Device* pDevice, CommandQueue* pCommandQueue, const S
 	ThrowIfFailed(result);
 
 	ComPtr<IDXGISwapChain> pTmpSwapChain;
-	result = pFactory->CreateSwapChain(pCommandQueue->Get(), &rawDesc, pTmpSwapChain.GetAddressOf());
+	result = pFactory->CreateSwapChain(pCommandQueue->NativePtr(), &rawDesc, pTmpSwapChain.GetAddressOf());
 	ThrowIfFailed(result);
 
 	result = pTmpSwapChain->QueryInterface(IID_PPV_ARGS(&pSwapChain_));
@@ -79,19 +79,21 @@ HRESULT ScreenContext::CreateRenderTargetViews()
 {
 	HRESULT result;
 
+	auto pNativeDevice = pDevice_->NativePtr();
+
 	if (pRtvHeap_ == nullptr)
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC desc = {};
 		desc.NumDescriptors = desc_.BufferCount;
 		desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 
-		result = pDevice_->Get()->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&pRtvHeap_));
+		result = pNativeDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&pRtvHeap_));
 		if (FAILED(result))
 		{
 			return result;
 		}
 
-		rtvDescriptorSize_ = pDevice_->Get()->GetDescriptorHandleIncrementSize(desc.Type);
+		rtvDescriptorSize_ = pNativeDevice->GetDescriptorHandleIncrementSize(desc.Type);
 	}
 
 	D3D12_RENDER_TARGET_VIEW_DESC desc = {};
@@ -110,7 +112,7 @@ HRESULT ScreenContext::CreateRenderTargetViews()
 		}
 		rtvViewPtrs_.push_back(pBackBufferView);
 
-		pDevice_->Get()->CreateRenderTargetView(pBackBufferView, &desc, handle);
+		pNativeDevice->CreateRenderTargetView(pBackBufferView, &desc, handle);
 		handle.ptr += rtvDescriptorSize_;
 	}
 
@@ -121,6 +123,8 @@ HRESULT ScreenContext::CreateDepthStencilView(const DepthStencilViewDesc& desc)
 {
 	HRESULT result;
 
+	auto pNativeDevice = pDevice_->NativePtr();
+
 	if (pDsvHeap_ == nullptr)
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC desc = {};
@@ -128,9 +132,9 @@ HRESULT ScreenContext::CreateDepthStencilView(const DepthStencilViewDesc& desc)
 		desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
 		desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 
-		result = pDevice_->Get()->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&pDsvHeap_));
+		result = pNativeDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&pDsvHeap_));
 
-		dsvDescriptorSize_ = pDevice_->Get()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+		dsvDescriptorSize_ = pNativeDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 	}
 
 	D3D12_HEAP_PROPERTIES prop = {};
@@ -153,7 +157,7 @@ HRESULT ScreenContext::CreateDepthStencilView(const DepthStencilViewDesc& desc)
 	clearValue.DepthStencil.Stencil = desc.ClearStencil;
 
 	ID3D12Resource* pDsv;
-	result = pDevice_->Get()->CreateCommittedResource(
+	result = pNativeDevice->CreateCommittedResource(
 		&prop, D3D12_HEAP_FLAG_NONE,
 		&resDesc, D3D12_RESOURCE_STATE_DEPTH_WRITE,
 		&clearValue,
@@ -167,10 +171,33 @@ HRESULT ScreenContext::CreateDepthStencilView(const DepthStencilViewDesc& desc)
 	dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 
-	pDevice_->Get()->CreateDepthStencilView(pDsv, &dsvDesc, pDsvHeap_->GetCPUDescriptorHandleForHeapStart());
+	pNativeDevice->CreateDepthStencilView(pDsv, &dsvDesc, pDsvHeap_->GetCPUDescriptorHandleForHeapStart());
 
 	dsvViewPtrs_.push_back(pDsv);
 
 	return result;
 }
 
+D3D12_CPU_DESCRIPTOR_HANDLE ScreenContext::CurrentRtvHandle()
+{
+	auto handle = pRtvHeap_->GetCPUDescriptorHandleForHeapStart();
+	handle.ptr += FrameIndex() * rtvDescriptorSize_;
+	return handle;
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE ScreenContext::DsvHandle(int index)
+{
+	auto handle = pDsvHeap_->GetCPUDescriptorHandleForHeapStart();
+	handle.ptr += index * dsvDescriptorSize_;
+	return handle;
+}
+
+void ScreenContext::UpdateFrameIndex()
+{
+	frameIndex_ = pSwapChain_->GetCurrentBackBufferIndex();
+}
+
+void ScreenContext::SwapBuffers()
+{
+	pSwapChain_->Present(1, 0);
+}

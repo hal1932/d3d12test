@@ -20,7 +20,7 @@ HRESULT CommandContainer::Create(Device* pDevice, SubmitType type)
 {
 	HRESULT result;
 
-	result = pDevice->Get()->CreateCommandAllocator(
+	result = pDevice->NativePtr()->CreateCommandAllocator(
 		static_cast<D3D12_COMMAND_LIST_TYPE>(type),
 		IID_PPV_ARGS(&pCommandAllocator_));
 
