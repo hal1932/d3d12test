@@ -4,6 +4,7 @@
 #include <vector>
 
 class Device;
+class CommandQueue;
 
 struct ScreenViewDesc
 {
@@ -63,7 +64,7 @@ public:
 	UINT FrameIndex() { return frameIndex_; }
 	ID3D12Resource* RenderTargetView(UINT index) { return rtvViewPtrs_[index]; }
 
-	void Create(Device* pDevice, ID3D12CommandQueue* pCommandQueue, const ScreenViewDesc& desc);
+	void Create(Device* pDevice, CommandQueue* pCommandQueue, const ScreenViewDesc& desc);
 
 	HRESULT CreateRenderTargetViews();
 	HRESULT CreateDepthStencilView(const DepthStencilViewDesc& desc);

@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include "Device.h"
+#include "CommandQueue.h"
 #include <wrl.h>
 
 using Microsoft::WRL::ComPtr;
@@ -30,7 +31,7 @@ ScreenContext::~ScreenContext()
 	SafeRelease(&pSwapChain_);
 }
 
-void ScreenContext::Create(Device* pDevice, ID3D12CommandQueue* pCommandQueue, const ScreenViewDesc& desc)
+void ScreenContext::Create(Device* pDevice, CommandQueue* pCommandQueue, const ScreenViewDesc& desc)
 {
 	DXGI_SWAP_CHAIN_DESC rawDesc = {};
 
@@ -62,7 +63,7 @@ void ScreenContext::Create(Device* pDevice, ID3D12CommandQueue* pCommandQueue, c
 	ThrowIfFailed(result);
 
 	ComPtr<IDXGISwapChain> pTmpSwapChain;
-	result = pFactory->CreateSwapChain(pCommandQueue, &rawDesc, pTmpSwapChain.GetAddressOf());
+	result = pFactory->CreateSwapChain(pCommandQueue->Get(), &rawDesc, pTmpSwapChain.GetAddressOf());
 	ThrowIfFailed(result);
 
 	result = pTmpSwapChain->QueryInterface(IID_PPV_ARGS(&pSwapChain_));

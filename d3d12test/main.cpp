@@ -19,6 +19,7 @@
 #include "Device.h"
 #include "ScreenContext.h"
 #include "GpuFence.h"
+#include "CommandQueue.h"
 
 #pragma comment(lib, "D3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -39,7 +40,8 @@ struct Graphics
 	ScreenContext screen;
 
 	//ComPtr<IDXGISwapChain3> pSwapChain;
-	ComPtr<ID3D12CommandQueue> pCommandQueue;
+	//ComPtr<ID3D12CommandQueue> pCommandQueue;
+	CommandQueue commandQueue;
 
 	//int frameIndex;
 
@@ -59,7 +61,6 @@ struct Graphics
 	//ComPtr<ID3D12Fence> pFence;
 	//UINT64 fenceValue;
 	//HANDLE fenceEvent;
-	GpuFence fence;
 
 	D3D12_VIEWPORT viewPort;
 	D3D12_RECT scissorRect;
@@ -73,13 +74,7 @@ bool SetupGraphics(HWND hWnd)
 
 	auto pDevice = gfx.device.Get();
 
-	{
-		D3D12_COMMAND_QUEUE_DESC desc = {};
-		desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-		desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-
-		ThrowIfFailed(pDevice->CreateCommandQueue(&desc, IID_PPV_ARGS(&gfx.pCommandQueue)));
-	}
+	gfx.commandQueue.Create(&gfx.device);
 
 	{
 		ScreenViewDesc desc;
@@ -87,7 +82,7 @@ bool SetupGraphics(HWND hWnd)
 		desc.Height = cScreenHeight;
 		desc.OutputWindow = hWnd;
 
-		gfx.screen.Create(&gfx.device, gfx.pCommandQueue.Get(), desc);
+		gfx.screen.Create(&gfx.device, &gfx.commandQueue, desc);
 	}
 
 	{
@@ -110,8 +105,6 @@ bool SetupGraphics(HWND hWnd)
 		ThrowIfFailed(pDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, gfx.pCommandAllocator.Get(), nullptr, IID_PPV_ARGS(&gfx.pCommandList)));
 		gfx.pCommandList->Close();
 	}
-
-	gfx.fence.Create(&gfx.device);
 
 	{
 		gfx.viewPort = {};
@@ -346,10 +339,7 @@ bool SetupScene()
 
 void WaitForCommandExecution()
 {
-	// コマンド実行の完了待ち
-	gfx.fence.IncrementValue();
-	ThrowIfFailed(gfx.pCommandQueue->Signal(gfx.fence.Get(), gfx.fence.CurrentValue()));
-	gfx.fence.WaitForCompletion();
+	gfx.commandQueue.WaitForExecution();
 
 	// バックバッファのインデックスを更新
 	gfx.screen.UpdateFrameIndex();
@@ -405,8 +395,7 @@ void Draw()
 
 	pCmdList->Close();
 
-	ID3D12CommandList* ppCmdLists[] = { pCmdList.Get() };
-	gfx.pCommandQueue->ExecuteCommandLists(_countof(ppCmdLists), ppCmdLists);
+	gfx.commandQueue.Enqueue(pCmdList.Get());
 
 	gfx.screen.Get()->Present(1, 0);
 
@@ -430,7 +419,6 @@ void ShutdownGraphics()
 
 	gfx.pCommandList.Reset();
 	gfx.pCommandAllocator.Reset();
-	gfx.pCommandQueue.Reset();
 }
 
 int MainImpl(int, char**)

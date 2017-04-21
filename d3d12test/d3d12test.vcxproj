@@ -124,6 +124,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CommandQueue.cpp" />
     <ClCompile Include="Device.cpp" />
     <ClCompile Include="GpuFence.cpp" />
     <ClCompile Include="main.cpp" />
@@ -152,6 +153,7 @@
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CommandQueue.h" />
     <ClInclude Include="common.h" />
     <ClInclude Include="Device.h" />
     <ClInclude Include="GpuFence.h" />

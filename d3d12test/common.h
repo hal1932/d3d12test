@@ -24,6 +24,16 @@ inline void SafeCloseHandle(HANDLE* pHandle)
 	}
 }
 
+template<class T>
+inline void SafeDelete(T** ppObj)
+{
+	if (*ppObj != nullptr)
+	{
+		delete *ppObj;
+		*ppObj = nullptr;
+	}
+}
+
 inline
 tstring GetLastErrorMessage()
 {
