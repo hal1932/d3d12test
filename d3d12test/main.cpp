@@ -17,7 +17,7 @@
 #include "common.h"
 #include "Window.h"
 #include "Device.h"
-#include "ScreenView.h"
+#include "ScreenContext.h"
 
 #pragma comment(lib, "D3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -35,7 +35,7 @@ const int cBufferCount = 2;
 struct Graphics
 {
 	Device device;
-	ScreenView screen;
+	ScreenContext screen;
 
 	//ComPtr<IDXGISwapChain3> pSwapChain;
 	ComPtr<ID3D12CommandQueue> pCommandQueue;

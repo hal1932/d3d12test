@@ -38,11 +38,11 @@ struct DepthStencilViewDesc
 	{}
 };
 
-class ScreenView
+class ScreenContext
 {
 public:
-	ScreenView();
-	~ScreenView();
+	ScreenContext();
+	~ScreenContext();
 
 	IDXGISwapChain3* Get() { return pSwapChain_; }
 

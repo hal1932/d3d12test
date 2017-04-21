@@ -1,4 +1,4 @@
-#include "ScreenView.h"
+#include "ScreenContext.h"
 
 #include "common.h"
 #include "Device.h"
@@ -6,14 +6,14 @@
 
 using Microsoft::WRL::ComPtr;
 
-ScreenView::ScreenView()
+ScreenContext::ScreenContext()
 	: pSwapChain_(nullptr),
 	frameIndex_(0),
 	pRtvHeap_(nullptr),
 	pDsvHeap_(nullptr)
 {}
 
-ScreenView::~ScreenView()
+ScreenContext::~ScreenContext()
 {
 	for (auto pView : rtvViewPtrs_)
 	{
@@ -30,7 +30,7 @@ ScreenView::~ScreenView()
 	SafeRelease(&pSwapChain_);
 }
 
-void ScreenView::Create(Device* pDevice, ID3D12CommandQueue* pCommandQueue, const ScreenViewDesc& desc)
+void ScreenContext::Create(Device* pDevice, ID3D12CommandQueue* pCommandQueue, const ScreenViewDesc& desc)
 {
 	DXGI_SWAP_CHAIN_DESC rawDesc = {};
 
@@ -74,7 +74,7 @@ void ScreenView::Create(Device* pDevice, ID3D12CommandQueue* pCommandQueue, cons
 	pDevice_ = pDevice;
 }
 
-HRESULT ScreenView::CreateRenderTargetViews()
+HRESULT ScreenContext::CreateRenderTargetViews()
 {
 	HRESULT result;
 
@@ -116,7 +116,7 @@ HRESULT ScreenView::CreateRenderTargetViews()
 	return result;
 }
 
-HRESULT ScreenView::CreateDepthStencilView(const DepthStencilViewDesc& desc)
+HRESULT ScreenContext::CreateDepthStencilView(const DepthStencilViewDesc& desc)
 {
 	HRESULT result;
 
