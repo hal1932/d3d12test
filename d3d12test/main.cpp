@@ -18,6 +18,7 @@
 #include "Window.h"
 #include "Device.h"
 #include "ScreenContext.h"
+#include "GpuFence.h"
 
 #pragma comment(lib, "D3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -55,9 +56,10 @@ struct Graphics
 	
 	ComPtr<ID3D12GraphicsCommandList> pCommandList;
 
-	ComPtr<ID3D12Fence> pFence;
-	UINT64 fenceValue;
-	HANDLE fenceEvent;
+	//ComPtr<ID3D12Fence> pFence;
+	//UINT64 fenceValue;
+	//HANDLE fenceEvent;
+	GpuFence fence;
 
 	D3D12_VIEWPORT viewPort;
 	D3D12_RECT scissorRect;
@@ -109,17 +111,7 @@ bool SetupGraphics(HWND hWnd)
 		gfx.pCommandList->Close();
 	}
 
-	{
-		ThrowIfFailed(pDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&gfx.pFence)));
-		gfx.fenceValue = 1;
-
-		gfx.fenceEvent = CreateEventEx(nullptr, FALSE, 0, EVENT_ALL_ACCESS);
-		if (!gfx.fenceEvent)
-		{
-			std::cerr << "CreateEventEx: " << GetLastErrorMessage();
-			return false;
-		}
-	}
+	gfx.fence.Create(&gfx.device);
 
 	{
 		gfx.viewPort = {};
@@ -355,16 +347,9 @@ bool SetupScene()
 void WaitForCommandExecution()
 {
 	// コマンド実行の完了待ち
-	const UINT64 fence = gfx.fenceValue;
-	ThrowIfFailed(gfx.pCommandQueue->Signal(gfx.pFence.Get(), fence));
-
-	++gfx.fenceValue;
-
-	if (gfx.pFence->GetCompletedValue() < fence)
-	{
-		ThrowIfFailed(gfx.pFence->SetEventOnCompletion(fence, gfx.fenceEvent));
-		WaitForSingleObject(gfx.fenceEvent, INFINITE);
-	}
+	gfx.fence.IncrementValue();
+	ThrowIfFailed(gfx.pCommandQueue->Signal(gfx.fence.Get(), gfx.fence.CurrentValue()));
+	gfx.fence.WaitForCompletion();
 
 	// バックバッファのインデックスを更新
 	gfx.screen.UpdateFrameIndex();
@@ -443,9 +428,6 @@ void ShutdownGraphics()
 {
 	WaitForCommandExecution();
 
-	CloseHandle(gfx.fenceEvent);
-
-	gfx.pFence.Reset();
 	gfx.pCommandList.Reset();
 	gfx.pCommandAllocator.Reset();
 	gfx.pCommandQueue.Reset();

@@ -5,6 +5,25 @@
 
 typedef std::basic_string<TCHAR> tstring;
 
+template<class T>
+inline void SafeRelease(T** ppObj)
+{
+	if (*ppObj != nullptr)
+	{
+		(*ppObj)->Release();
+		*ppObj = nullptr;
+	}
+}
+
+inline void SafeCloseHandle(HANDLE* pHandle)
+{
+	if (*pHandle != nullptr)
+	{
+		CloseHandle(*pHandle);
+		*pHandle = nullptr;
+	}
+}
+
 inline
 tstring GetLastErrorMessage()
 {
@@ -14,16 +33,6 @@ tstring GetLastErrorMessage()
 	std::string msgStr((LPTSTR)msg);
 	LocalFree(msg);
 	return msgStr;
-}
-
-template<class T>
-inline void SafeRelease(T** pObj)
-{
-	if (*pObj != nullptr)
-	{
-		(*pObj)->Release();
-		*pObj = nullptr;
-	}
 }
 
 template<class T = std::exception>
