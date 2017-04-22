@@ -26,27 +26,22 @@ D3D12_CPU_DESCRIPTOR_HANDLE ResourceHeap::CpuHandle(int index)
 	return handle;
 }
 
-HRESULT ResourceHeap::CreateRenderTargetViewHeap(Device* pDevice, const RtvHeapDesc& desc)
+HRESULT ResourceHeap::CreateHeap(Device* pDevice, const HeapDesc& desc)
 {
-	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
-	heapDesc.NumDescriptors = static_cast<UINT>(desc.BufferCount);
-	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-
-	HRESULT result;
-
-	auto pNativeDevice = pDevice->NativePtr();
-
-	result = pNativeDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&pDescriptorHeap_));
-	if (FAILED(result))
+	switch (desc.ViewType)
 	{
-		return result;
+		case HeapDesc::ViewType::RenderTargetView:
+			return CreateHeapImpl_(pDevice, desc, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE);
+
+		case HeapDesc::ViewType::DepthStencilView:
+			return CreateHeapImpl_(pDevice, desc, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE);
+
+		case HeapDesc::ViewType::ConstantBufferView:
+			return CreateHeapImpl_(pDevice, desc, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE);
+
+		default:
+			return S_FALSE;
 	}
-
-	pDevice_ = pDevice;
-	descriptorSize_ = pNativeDevice->GetDescriptorHandleIncrementSize(heapDesc.Type);
-	resourceCount_ = heapDesc.NumDescriptors;
-
-	return result;
 }
 
 HRESULT ResourceHeap::CreateRenderTargetViewFromBackBuffer(ScreenContext* pScreen)
@@ -73,29 +68,6 @@ HRESULT ResourceHeap::CreateRenderTargetViewFromBackBuffer(ScreenContext* pScree
 		pNativeDevice->CreateRenderTargetView(pView, &viewDesc, handle);
 		handle.ptr += descriptorSize_;
 	}
-
-	return result;
-}
-
-HRESULT ResourceHeap::CreateDepthStencilViewHeap(Device* pDevice, const DsvHeapDesc& desc)
-{
-	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
-	heapDesc.NumDescriptors = static_cast<UINT>(desc.BufferCount);
-	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-
-	HRESULT result;
-
-	auto pNativeDevice = pDevice->NativePtr();
-
-	result = pNativeDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&pDescriptorHeap_));
-	if (FAILED(result))
-	{
-		return result;
-	}
-
-	pDevice_ = pDevice;
-	descriptorSize_ = pNativeDevice->GetDescriptorHandleIncrementSize(heapDesc.Type);
-	resourceCount_ = heapDesc.NumDescriptors;
 
 	return result;
 }
@@ -148,30 +120,6 @@ HRESULT ResourceHeap::CreateDepthStencilView(ScreenContext* pContext, const DsvD
 	return result;
 }
 
-HRESULT ResourceHeap::CreateConstantBufferViewHeap(Device* pDevice, const cbvHeapDesc& desc)
-{
-	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
-	heapDesc.NumDescriptors = static_cast<UINT>(desc.BufferCount);
-	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-
-	HRESULT result;
-
-	auto pNativeDevice = pDevice->NativePtr();
-
-	result = pNativeDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&pDescriptorHeap_));
-	if (FAILED(result))
-	{
-		return result;
-	}
-
-	pDevice_ = pDevice;
-	descriptorSize_ = pNativeDevice->GetDescriptorHandleIncrementSize(heapDesc.Type);
-	resourceCount_ = heapDesc.NumDescriptors;
-
-	return result;
-}
-
 HRESULT ResourceHeap::CreateConstantBufferView(const CsvDesc& desc)
 {
 	D3D12_HEAP_PROPERTIES heapProp = {};
@@ -211,6 +159,34 @@ HRESULT ResourceHeap::CreateConstantBufferView(const CsvDesc& desc)
 	pNativeDevice->CreateConstantBufferView(&viewDesc, handle);
 
 	resourcePtrs_.push_back(pView);
+
+	return result;
+}
+
+HRESULT ResourceHeap::CreateHeapImpl_(
+	Device* pDevice,
+	const HeapDesc& desc,
+	D3D12_DESCRIPTOR_HEAP_TYPE type,
+	D3D12_DESCRIPTOR_HEAP_FLAGS flags)
+{
+	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+	heapDesc.NumDescriptors = static_cast<UINT>(desc.BufferCount);
+	heapDesc.Type = type;
+	heapDesc.Flags = flags;
+
+	HRESULT result;
+
+	auto pNativeDevice = pDevice->NativePtr();
+
+	result = pNativeDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&pDescriptorHeap_));
+	if (FAILED(result))
+	{
+		return result;
+	}
+
+	pDevice_ = pDevice;
+	descriptorSize_ = pNativeDevice->GetDescriptorHandleIncrementSize(heapDesc.Type);
+	resourceCount_ = heapDesc.NumDescriptors;
 
 	return result;
 }

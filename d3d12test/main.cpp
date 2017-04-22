@@ -72,10 +72,10 @@ bool SetupGraphics(HWND hWnd)
 		gfx.screen.Create(&gfx.device, &gfx.commandQueue, desc);
 	}
 
-	gfx.renderTargetViewHeap.CreateRenderTargetViewHeap(&gfx.device, { 2 });
+	gfx.renderTargetViewHeap.CreateHeap(&gfx.device, { HeapDesc::ViewType::RenderTargetView, 2 });
 	gfx.renderTargetViewHeap.CreateRenderTargetViewFromBackBuffer(&gfx.screen);
 
-	gfx.depthStencilViewHeap.CreateDepthStencilViewHeap(&gfx.device, { 1 });
+	gfx.depthStencilViewHeap.CreateHeap(&gfx.device, { HeapDesc::ViewType::DepthStencilView, 1 });
 	gfx.depthStencilViewHeap.CreateDepthStencilView(
 		&gfx.screen,
 		{ cScreenWidth, cScreenHeight, DXGI_FORMAT_D24_UNORM_S8_UINT, 1.0f, 0 });
@@ -184,7 +184,7 @@ bool SetupScene()
 		scene.vertexBufferView.StrideInBytes = sizeof(Vertex);
 	}
 	
-	scene.cbvHeap.CreateConstantBufferViewHeap(&gfx.device, { 1 });
+	scene.cbvHeap.CreateHeap(&gfx.device, { HeapDesc::ViewType::ConstantBufferView, 1 });
 	scene.cbvHeap.CreateConstantBufferView({ sizeof(scene.transformBuffer), D3D12_TEXTURE_LAYOUT_ROW_MAJOR });
 
 	{

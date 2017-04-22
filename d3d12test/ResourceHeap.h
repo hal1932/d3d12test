@@ -5,13 +5,14 @@
 class Device;
 class ScreenContext;
 
-struct RtvHeapDesc
+struct HeapDesc
 {
-	int BufferCount;
-};
-
-struct DsvHeapDesc
-{
+	enum class ViewType
+	{
+		RenderTargetView,
+		DepthStencilView,
+		ConstantBufferView,
+	} ViewType;
 	int BufferCount;
 };
 
@@ -22,11 +23,6 @@ struct DsvDesc
 	DXGI_FORMAT Format;
 	float ClearDepth;
 	unsigned char ClearStencil;
-};
-
-struct cbvHeapDesc
-{
-	int BufferCount;
 };
 
 struct CsvDesc
@@ -46,13 +42,10 @@ public:
 
 	D3D12_CPU_DESCRIPTOR_HANDLE CpuHandle(int index);
 
-	HRESULT CreateRenderTargetViewHeap(Device* pDevice, const RtvHeapDesc& desc);
+	HRESULT CreateHeap(Device* pDevice, const HeapDesc& desc);
+
 	HRESULT CreateRenderTargetViewFromBackBuffer(ScreenContext* pScreen);
-
-	HRESULT CreateDepthStencilViewHeap(Device* pDevice, const DsvHeapDesc& desc);
 	HRESULT CreateDepthStencilView(ScreenContext* pContext, const DsvDesc& desc);
-
-	HRESULT CreateConstantBufferViewHeap(Device* pDevice, const cbvHeapDesc& desc);
 	HRESULT CreateConstantBufferView(const CsvDesc& desc);
 
 private:
@@ -62,5 +55,11 @@ private:
 	UINT descriptorSize_;
 	UINT resourceCount_;
 	std::vector<ID3D12Resource*> resourcePtrs_;
+
+	HRESULT CreateHeapImpl_(
+		Device* pDevice,
+		const HeapDesc& desc,
+		D3D12_DESCRIPTOR_HEAP_TYPE type,
+		D3D12_DESCRIPTOR_HEAP_FLAGS flags);
 };
 
