@@ -80,17 +80,10 @@ HRESULT Window::Setup(HINSTANCE hInstance, LPCTSTR title)
 
 HRESULT Window::Move(int x, int y)
 {
-	RECT rect;
-	if (!GetWindowRect(handle_, &rect))
+	if (!SetWindowPos(handle_, nullptr, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER))
 	{
 		return S_FALSE;
 	}
-
-	if (!MoveWindow(handle_, x, y, rect.right - rect.left, rect.bottom - rect.top, TRUE))
-	{
-		return S_FALSE;
-	}
-
 	return S_OK;
 }
 
