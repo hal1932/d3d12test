@@ -401,17 +401,16 @@ int MainImpl(int, char**)
 	Window window;
 	window.Setup(GetModuleHandle(nullptr), _TEXT("d3d12test"));
 
-	SetupGraphics(window.Handle());
+	window.Move(300, 200);
+	window.Resize(1280, 720);
+	window.Open();
 
 	window.SetEventHandler(WindowEvent::Resize, [](auto e)
 	{
 		auto arg = static_cast<ResizeEventArg*>(e);
 	});
 
-	window.Move(300, 200);
-	window.Resize(1280, 720);
-	window.Open();
-
+	SetupGraphics(window.Handle());
 	SetupScene();
 
 	{
