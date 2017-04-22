@@ -414,9 +414,7 @@ int MainImpl(int, char**)
 	SetupScene();
 
 	{
-		MSG msg;
-		ZeroMemory(&msg, sizeof(msg));
-
+		MSG msg = {};
 		while (msg.message != WM_QUIT)
 		{
 			auto nextMsg = PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE);
