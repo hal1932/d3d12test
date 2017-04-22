@@ -22,6 +22,7 @@
 #include "CommandQueue.h"
 #include "CommandContainer.h"
 #include "CommandList.h"
+#include "ResourceHeap.h"
 
 #pragma comment(lib, "D3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -40,6 +41,9 @@ struct Graphics
 {
 	Device device;
 	ScreenContext screen;
+
+	ResourceHeap renderTargetViewHeap;
+	ResourceHeap depthStencilViewHeap;
 
 	CommandQueue commandQueue;
 
@@ -60,6 +64,7 @@ bool SetupGraphics(HWND hWnd)
 
 	{
 		ScreenContextDesc desc;
+		desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 		desc.Width = cScreenWidth;
 		desc.Height = cScreenHeight;
 		desc.OutputWindow = hWnd;
@@ -67,15 +72,13 @@ bool SetupGraphics(HWND hWnd)
 		gfx.screen.Create(&gfx.device, &gfx.commandQueue, desc);
 	}
 
-	gfx.screen.CreateRenderTargetViews();
+	gfx.renderTargetViewHeap.CreateRenderTargetViewHeap(&gfx.device, { 2 });
+	gfx.renderTargetViewHeap.CreateRenderTargetViewFromBackBuffer(&gfx.screen);
 
-	{
-		DepthStencilViewDesc desc;
-		desc.Width = cScreenWidth;
-		desc.Height = cScreenHeight;
-
-		gfx.screen.CreateDepthStencilView(desc);
-	}
+	gfx.depthStencilViewHeap.CreateDepthStencilViewHeap(&gfx.device, { 1 });
+	gfx.depthStencilViewHeap.CreateDepthStencilView(
+		&gfx.screen,
+		{ cScreenWidth, cScreenHeight, DXGI_FORMAT_D24_UNORM_S8_UINT, 1.0f, 0 });
 
 	gfx.commandContainer.Create(&gfx.device);
 
@@ -345,13 +348,13 @@ void Draw()
 
 	D3D12_RESOURCE_BARRIER barrier = {};
 	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	barrier.Transition.pResource = gfx.screen.RenderTargetView(gfx.screen.FrameIndex());
+	barrier.Transition.pResource = gfx.renderTargetViewHeap.NativeResourcePtr(gfx.screen.FrameIndex());
 	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
 	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	pCmdList->ResourceBarrier(1, &barrier);
 
-	auto handleRTV = gfx.screen.CurrentRtvHandle();
-	auto handleDSV = gfx.screen.DsvHandle();
+	auto handleRTV = gfx.renderTargetViewHeap.CpuHandle(gfx.screen.FrameIndex());
+	auto handleDSV = gfx.depthStencilViewHeap.CpuHandle(0);
 
 	pCmdList->OMSetRenderTargets(1, &handleRTV, FALSE, &handleDSV);
 
