@@ -96,13 +96,22 @@ HRESULT Window::Move(int x, int y)
 
 HRESULT Window::Resize(int width, int height)
 {
-	RECT rect;
-	if (!GetWindowRect(handle_, &rect))
+	RECT window;
+	if (!GetWindowRect(handle_, &window))
 	{
 		return S_FALSE;
 	}
 
-	if (!MoveWindow(handle_, rect.left, rect.top, width, height, TRUE))
+	RECT client;
+	if (!GetClientRect(handle_, &client))
+	{
+		return S_FALSE;
+	}
+
+	auto marginW = (window.right - window.left) - (client.right - client.left);
+	auto marginH = (window.bottom - window.top) - (client.bottom - client.top);
+
+	if (!MoveWindow(handle_, window.left, window.top, width + marginW, height + marginH, TRUE))
 	{
 		return S_FALSE;
 	}
