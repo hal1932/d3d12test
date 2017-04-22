@@ -403,6 +403,11 @@ int MainImpl(int, char**)
 
 	SetupGraphics(window.Handle());
 
+	window.SetEventHandler(WindowEvent::Resize, [](auto e)
+	{
+		auto arg = static_cast<ResizeEventArg*>(e);
+	});
+
 	window.Move(300, 200);
 	window.Resize(1280, 720);
 	window.Open();

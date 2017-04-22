@@ -163,6 +163,7 @@
     <ClInclude Include="GpuFence.h" />
     <ClInclude Include="ScreenContext.h" />
     <ClInclude Include="Window.h" />
+    <ClInclude Include="WindowEvent.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
