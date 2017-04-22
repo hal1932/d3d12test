@@ -130,6 +130,7 @@
     <ClCompile Include="Device.cpp" />
     <ClCompile Include="GpuFence.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Resource.cpp" />
     <ClCompile Include="ResourceViewHeap.cpp" />
     <ClCompile Include="ScreenContext.cpp" />
     <ClCompile Include="Window.cpp" />
@@ -162,6 +163,7 @@
     <ClInclude Include="common.h" />
     <ClInclude Include="Device.h" />
     <ClInclude Include="GpuFence.h" />
+    <ClInclude Include="Resource.h" />
     <ClInclude Include="ResourceViewHeap.h" />
     <ClInclude Include="ScreenContext.h" />
     <ClInclude Include="Window.h" />

@@ -23,6 +23,7 @@
 #include "CommandContainer.h"
 #include "CommandList.h"
 #include "ResourceViewHeap.h"
+#include "Resource.h"
 
 #pragma comment(lib, "D3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -116,8 +117,7 @@ struct Scene
 	ComPtr<ID3D12PipelineState> pPipelineState;
 	float rotateAngle;
 
-	ComPtr<ID3D12Resource> pVertexBuffer;
-	D3D12_VERTEX_BUFFER_VIEW vertexBufferView;
+	Resource vertexBuffer;
 
 	TransformBuffer transformBuffer;
 	UINT8* pCbvData;
@@ -158,30 +158,11 @@ bool SetupScene()
 			{ { -1.0f, -1.0f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }
 		};
 
-		D3D12_HEAP_PROPERTIES prop = {};
-		prop.Type = D3D12_HEAP_TYPE_UPLOAD;
-		prop.CreationNodeMask = 1;
-		prop.VisibleNodeMask = 1;
+		scene.vertexBuffer.CreateVertexBuffer(&gfx.device, sizeof(vertices));
 
-		D3D12_RESOURCE_DESC desc = {};
-		desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		desc.Width = sizeof(vertices);
-		desc.Height = 1;
-		desc.DepthOrArraySize = 1;
-		desc.MipLevels = 1;
-		desc.SampleDesc.Count = 1;
-		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-		ThrowIfFailed(pNativeDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&scene.pVertexBuffer)));
-
-		UINT8* pData;
-		ThrowIfFailed(scene.pVertexBuffer->Map(0, nullptr, (void**)&pData));
+		auto pData = scene.vertexBuffer.Map(0);
 		memcpy(pData, vertices, sizeof(vertices));
-		scene.pVertexBuffer->Unmap(0, nullptr);
-
-		scene.vertexBufferView.BufferLocation = scene.pVertexBuffer->GetGPUVirtualAddress();
-		scene.vertexBufferView.SizeInBytes = sizeof(vertices);
-		scene.vertexBufferView.StrideInBytes = sizeof(Vertex);
+		scene.vertexBuffer.Unmap(0);
 	}
 	
 	scene.cbvHeap.CreateHeap(&gfx.device, { HeapDesc::ViewType::ConstantBufferView, 1 });
@@ -338,7 +319,8 @@ void Draw()
 
 	pCmdList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	pCmdList->IASetVertexBuffers(0, 1, &scene.vertexBufferView);
+	auto vbView = scene.vertexBuffer.GetVertexBufferView(sizeof(Vertex));
+	pCmdList->IASetVertexBuffers(0, 1, &vbView);
 
 	pCmdList->DrawInstanced(3, 1, 0, 0);
 
@@ -359,7 +341,6 @@ void ShutdownScene()
 {
 	scene.cbvHeap.NativeResourcePtr(0)->Unmap(0, nullptr);
 
-	scene.pVertexBuffer.Reset();
 	scene.pPipelineState.Reset();
 	scene.pRootSignature.Reset();
 }
