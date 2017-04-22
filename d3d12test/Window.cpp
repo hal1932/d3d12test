@@ -1,16 +1,16 @@
 #include "Window.h"
 
-
 namespace
 {
-	LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+	typedef std::function<LRESULT(HWND, UINT, WPARAM, LPARAM)> LocalWindowProc;
+
+	std::map<HWND, LocalWindowProc> LocalWindowProcMap;
+
+	LRESULT CALLBACK GlobalWindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	{
-		if (msg == WM_DESTROY)
-		{
-			PostQuitMessage(0);
-			return S_OK;
-		}
-		return DefWindowProc(hWnd, msg, wParam, lParam);
+		auto item = LocalWindowProcMap.find(hWnd);
+		return (item != LocalWindowProcMap.end()) ?
+			item->second(hWnd, msg, wParam, lParam) : DefWindowProc(hWnd, msg, wParam, lParam);
 	}
 }
 
@@ -24,7 +24,6 @@ Window::~Window()
 	Close();
 }
 
-
 HRESULT Window::Setup(HINSTANCE hInstance, LPCTSTR title)
 {
 	if (handle_ != nullptr)
@@ -37,7 +36,7 @@ HRESULT Window::Setup(HINSTANCE hInstance, LPCTSTR title)
 	WNDCLASSEX wcex = {
 		sizeof(WNDCLASSEX),
 		CS_HREDRAW | CS_VREDRAW,
-		WindowProc,
+		GlobalWindowProc,
 		0, 0,
 		hInstance,
 		LoadIcon(hInstance, IDI_APPLICATION),
@@ -57,7 +56,7 @@ HRESULT Window::Setup(HINSTANCE hInstance, LPCTSTR title)
 	handle_ = CreateWindow(
 		title,
 		title,
-		WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
+		WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
 		nullptr,
 		nullptr,
@@ -67,6 +66,11 @@ HRESULT Window::Setup(HINSTANCE hInstance, LPCTSTR title)
 	{
 		return S_FALSE;
 	}
+
+	LocalWindowProcMap[handle_] = [this](auto hWnd, auto msg, auto wParam, auto lParam)
+	{
+		return WindowProc_(hWnd, msg, wParam, lParam);
+	};
 
 	instanceHandle_ = hInstance;
 	title_ = title;
@@ -134,6 +138,8 @@ HRESULT Window::Close()
 		return S_FALSE;
 	}
 
+	LocalWindowProcMap.erase(handle_);
+
 	handle_ = nullptr;
 	instanceHandle_ = nullptr;
 	title_ = nullptr;
@@ -141,3 +147,52 @@ HRESULT Window::Close()
 	return S_OK;
 }
 
+void Window::SetEventHandler(WindowEvent ev, std::function<void(WindowEventArg*)> handler)
+{
+	eventHandlers_[ev] = handler;
+}
+
+LRESULT Window::WindowProc_(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+	switch (msg)
+	{
+		case WM_DESTROY:
+		{
+			PostQuitMessage(0);
+			break;
+		}
+
+		case WM_KEYUP:
+		{
+			if (wParam == VK_ESCAPE)
+			{
+				PostMessage(hWnd, WM_DESTROY, 0, 0);
+			}
+			break;
+		}
+
+		case WM_SIZE:
+		{
+			ResizeEventArg e = {
+				static_cast<int>(lParam & 0xFFFF),
+				static_cast<int>((lParam >> 16) & 0xFFFF)
+			};
+			InvokeEventHandler_(WindowEvent::Resize, &e);
+			break;
+		}
+
+		default:
+			break;
+	}
+
+	return DefWindowProc(hWnd, msg, wParam, lParam);
+}
+
+void Window::InvokeEventHandler_(WindowEvent ev, WindowEventArg* e)
+{
+	auto item = eventHandlers_.find(ev);
+	if (item != eventHandlers_.end())
+	{
+		item->second(e);
+	}
+}
