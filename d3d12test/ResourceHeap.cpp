@@ -59,7 +59,7 @@ HRESULT ResourceHeap::CreateRenderTargetViewFromBackBuffer(ScreenContext* pScree
 
 	auto pNativeDevice = pDevice_->NativePtr();
 
-	auto handle = pDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
+	auto handle = CpuHandle(static_cast<int>(resourcePtrs_.size()));
 	for (UINT i = 0; i < resourceCount_; ++i)
 	{
 		ID3D12Resource* pView;
@@ -140,7 +140,75 @@ HRESULT ResourceHeap::CreateDepthStencilView(ScreenContext* pContext, const DsvD
 	viewDesc.Format = desc.Format;
 	viewDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 
-	pNativeDevice->CreateDepthStencilView(pView, &viewDesc, pDescriptorHeap_->GetCPUDescriptorHandleForHeapStart());
+	auto handle = CpuHandle(static_cast<int>(resourcePtrs_.size()));
+	pNativeDevice->CreateDepthStencilView(pView, &viewDesc, handle);
+
+	resourcePtrs_.push_back(pView);
+
+	return result;
+}
+
+HRESULT ResourceHeap::CreateConstantBufferViewHeap(Device* pDevice, const cbvHeapDesc& desc)
+{
+	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+	heapDesc.NumDescriptors = static_cast<UINT>(desc.BufferCount);
+	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+
+	HRESULT result;
+
+	auto pNativeDevice = pDevice->NativePtr();
+
+	result = pNativeDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&pDescriptorHeap_));
+	if (FAILED(result))
+	{
+		return result;
+	}
+
+	pDevice_ = pDevice;
+	descriptorSize_ = pNativeDevice->GetDescriptorHandleIncrementSize(heapDesc.Type);
+	resourceCount_ = heapDesc.NumDescriptors;
+
+	return result;
+}
+
+HRESULT ResourceHeap::CreateConstantBufferView(const CsvDesc& desc)
+{
+	D3D12_HEAP_PROPERTIES heapProp = {};
+	heapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
+	heapProp.CreationNodeMask = 1;
+	heapProp.VisibleNodeMask = 1;
+
+	D3D12_RESOURCE_DESC resDesc = {};
+	resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	resDesc.Width = static_cast<UINT64>(desc.Size);
+	resDesc.Height = 1;
+	resDesc.DepthOrArraySize = 1;
+	resDesc.MipLevels = 1;
+	resDesc.SampleDesc.Count = 1;
+	resDesc.Layout = desc.Layout;
+
+	HRESULT result;
+
+	auto pNativeDevice = pDevice_->NativePtr();
+
+	ID3D12Resource* pView;
+	result = pNativeDevice->CreateCommittedResource(
+		&heapProp, D3D12_HEAP_FLAG_NONE,
+		&resDesc, D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&pView));
+	if (FAILED(result))
+	{
+		return result;
+	}
+
+	D3D12_CONSTANT_BUFFER_VIEW_DESC viewDesc = {};
+	viewDesc.BufferLocation = pView->GetGPUVirtualAddress();
+	viewDesc.SizeInBytes = static_cast<UINT>(desc.Size);
+
+	auto handle = CpuHandle(static_cast<int>(resourcePtrs_.size()));
+	pNativeDevice->CreateConstantBufferView(&viewDesc, handle);
 
 	resourcePtrs_.push_back(pView);
 

@@ -120,9 +120,8 @@ struct Scene
 	D3D12_VERTEX_BUFFER_VIEW vertexBufferView;
 
 	TransformBuffer transformBuffer;
-	ComPtr<ID3D12DescriptorHeap> pCbvHeap;
-	ComPtr<ID3D12Resource> pConstantBuffer;
 	UINT8* pCbvData;
+	ResourceHeap cbvHeap;
 
 	D3D12_VIEWPORT viewport;
 	D3D12_RECT scissorRect;
@@ -184,41 +183,13 @@ bool SetupScene()
 		scene.vertexBufferView.SizeInBytes = sizeof(vertices);
 		scene.vertexBufferView.StrideInBytes = sizeof(Vertex);
 	}
+	
+	scene.cbvHeap.CreateConstantBufferViewHeap(&gfx.device, { 1 });
+	scene.cbvHeap.CreateConstantBufferView({ sizeof(scene.transformBuffer), D3D12_TEXTURE_LAYOUT_ROW_MAJOR });
 
 	{
-		D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-		desc.NumDescriptors = 1;
-		desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-
-		ThrowIfFailed(pNativeDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&scene.pCbvHeap)));
-	}
-
-	{
-		D3D12_HEAP_PROPERTIES prop = {};
-		prop.Type = D3D12_HEAP_TYPE_UPLOAD;
-		prop.CreationNodeMask = 1;
-		prop.VisibleNodeMask = 1;
-
-		D3D12_RESOURCE_DESC desc = {};
-		desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		desc.Width = sizeof(scene.transformBuffer);
-		desc.Height = 1;
-		desc.DepthOrArraySize = 1;
-		desc.MipLevels = 1;
-		desc.SampleDesc.Count = 1;
-		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-		ThrowIfFailed(pNativeDevice->CreateCommittedResource(&prop, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&scene.pConstantBuffer)));
-
-		D3D12_CONSTANT_BUFFER_VIEW_DESC viewDesc = {};
-		viewDesc.BufferLocation = scene.pConstantBuffer->GetGPUVirtualAddress();
-		viewDesc.SizeInBytes = sizeof(scene.transformBuffer);
-
-		pNativeDevice->CreateConstantBufferView(&viewDesc, scene.pCbvHeap->GetCPUDescriptorHandleForHeapStart());
-
-		// ƒŠƒ\[ƒX‚ð‰ð•ú‚·‚é‚Ü‚ÅMap‚µ‚Á‚Ï‚È‚µ‚ÅOK
-		ThrowIfFailed(scene.pConstantBuffer->Map(0, nullptr, (void**)&scene.pCbvData));
+		auto csvView = scene.cbvHeap.NativeResourcePtr(0);
+		csvView->Map(0, nullptr, reinterpret_cast<void**>(&scene.pCbvData));
 
 		scene.transformBuffer.World = DirectX::XMMatrixIdentity();
 		scene.transformBuffer.View = DirectX::XMMatrixLookAtLH({ 0.0f, 0.0f, 5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
@@ -336,9 +307,12 @@ void Draw()
 
 	auto pCmdList = gfx.pCommandList->AsGraphicsList();
 
-	pCmdList->SetDescriptorHeaps(1, scene.pCbvHeap.GetAddressOf());
-	pCmdList->SetGraphicsRootSignature(scene.pRootSignature.Get());
-	pCmdList->SetGraphicsRootDescriptorTable(0, scene.pCbvHeap->GetGPUDescriptorHandleForHeapStart());
+	{
+		auto heap = scene.cbvHeap.NativePtr();
+		pCmdList->SetDescriptorHeaps(1, &heap);
+		pCmdList->SetGraphicsRootSignature(scene.pRootSignature.Get());
+		pCmdList->SetGraphicsRootDescriptorTable(0, heap->GetGPUDescriptorHandleForHeapStart());
+	}
 
 	scene.viewport = { 0.0f, 0.0f, (float)cScreenWidth, (float)cScreenHeight, 0.0f, 1.0f };
 	pCmdList->RSSetViewports(1, &scene.viewport);
@@ -383,10 +357,8 @@ void Draw()
 
 void ShutdownScene()
 {
-	scene.pConstantBuffer->Unmap(0, nullptr);
+	scene.cbvHeap.NativeResourcePtr(0)->Unmap(0, nullptr);
 
-	scene.pConstantBuffer.Reset();
-	scene.pCbvHeap.Reset();
 	scene.pVertexBuffer.Reset();
 	scene.pPipelineState.Reset();
 	scene.pRootSignature.Reset();

@@ -24,12 +24,24 @@ struct DsvDesc
 	unsigned char ClearStencil;
 };
 
+struct cbvHeapDesc
+{
+	int BufferCount;
+};
+
+struct CsvDesc
+{
+	int Size;
+	D3D12_TEXTURE_LAYOUT Layout;
+};
+
 class ResourceHeap
 {
 public:
 	ResourceHeap();
 	~ResourceHeap();
 
+	ID3D12DescriptorHeap* NativePtr() { return pDescriptorHeap_; }
 	ID3D12Resource* NativeResourcePtr(int index) { return resourcePtrs_[index]; }
 
 	D3D12_CPU_DESCRIPTOR_HANDLE CpuHandle(int index);
@@ -39,6 +51,9 @@ public:
 
 	HRESULT CreateDepthStencilViewHeap(Device* pDevice, const DsvHeapDesc& desc);
 	HRESULT CreateDepthStencilView(ScreenContext* pContext, const DsvDesc& desc);
+
+	HRESULT CreateConstantBufferViewHeap(Device* pDevice, const cbvHeapDesc& desc);
+	HRESULT CreateConstantBufferView(const CsvDesc& desc);
 
 private:
 	Device* pDevice_;
