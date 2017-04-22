@@ -31,11 +31,11 @@ struct CsvDesc
 	D3D12_TEXTURE_LAYOUT Layout;
 };
 
-class ResourceHeap
+class ResourceViewHeap
 {
 public:
-	ResourceHeap();
-	~ResourceHeap();
+	ResourceViewHeap();
+	~ResourceViewHeap();
 
 	ID3D12DescriptorHeap* NativePtr() { return pDescriptorHeap_; }
 	ID3D12Resource* NativeResourcePtr(int index) { return resourcePtrs_[index]; }

@@ -1,15 +1,15 @@
-#include "ResourceHeap.h"
+#include "ResourceViewHeap.h"
 #include "common.h"
 #include "Device.h"
 #include "ScreenContext.h"
 
-ResourceHeap::ResourceHeap()
+ResourceViewHeap::ResourceViewHeap()
 	: pDevice_(nullptr),
 	pDescriptorHeap_(nullptr),
 	descriptorSize_(0U)
 {}
 
-ResourceHeap::~ResourceHeap()
+ResourceViewHeap::~ResourceViewHeap()
 {
 	for (auto pResource : resourcePtrs_)
 	{
@@ -19,14 +19,14 @@ ResourceHeap::~ResourceHeap()
 	SafeRelease(&pDescriptorHeap_);
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE ResourceHeap::CpuHandle(int index)
+D3D12_CPU_DESCRIPTOR_HANDLE ResourceViewHeap::CpuHandle(int index)
 {
 	auto handle = pDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
 	handle.ptr += index * descriptorSize_;
 	return handle;
 }
 
-HRESULT ResourceHeap::CreateHeap(Device* pDevice, const HeapDesc& desc)
+HRESULT ResourceViewHeap::CreateHeap(Device* pDevice, const HeapDesc& desc)
 {
 	switch (desc.ViewType)
 	{
@@ -44,7 +44,7 @@ HRESULT ResourceHeap::CreateHeap(Device* pDevice, const HeapDesc& desc)
 	}
 }
 
-HRESULT ResourceHeap::CreateRenderTargetViewFromBackBuffer(ScreenContext* pScreen)
+HRESULT ResourceViewHeap::CreateRenderTargetViewFromBackBuffer(ScreenContext* pScreen)
 {
 	D3D12_RENDER_TARGET_VIEW_DESC viewDesc = {};
 	viewDesc.Format = pScreen->Desc().Format;
@@ -72,7 +72,7 @@ HRESULT ResourceHeap::CreateRenderTargetViewFromBackBuffer(ScreenContext* pScree
 	return result;
 }
 
-HRESULT ResourceHeap::CreateDepthStencilView(ScreenContext* pContext, const DsvDesc& desc)
+HRESULT ResourceViewHeap::CreateDepthStencilView(ScreenContext* pContext, const DsvDesc& desc)
 {
 	D3D12_HEAP_PROPERTIES heapProp = {};
 	heapProp.Type = D3D12_HEAP_TYPE_DEFAULT;
@@ -120,7 +120,7 @@ HRESULT ResourceHeap::CreateDepthStencilView(ScreenContext* pContext, const DsvD
 	return result;
 }
 
-HRESULT ResourceHeap::CreateConstantBufferView(const CsvDesc& desc)
+HRESULT ResourceViewHeap::CreateConstantBufferView(const CsvDesc& desc)
 {
 	D3D12_HEAP_PROPERTIES heapProp = {};
 	heapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
@@ -163,7 +163,7 @@ HRESULT ResourceHeap::CreateConstantBufferView(const CsvDesc& desc)
 	return result;
 }
 
-HRESULT ResourceHeap::CreateHeapImpl_(
+HRESULT ResourceViewHeap::CreateHeapImpl_(
 	Device* pDevice,
 	const HeapDesc& desc,
 	D3D12_DESCRIPTOR_HEAP_TYPE type,

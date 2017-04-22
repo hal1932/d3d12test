@@ -22,7 +22,7 @@
 #include "CommandQueue.h"
 #include "CommandContainer.h"
 #include "CommandList.h"
-#include "ResourceHeap.h"
+#include "ResourceViewHeap.h"
 
 #pragma comment(lib, "D3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -42,8 +42,8 @@ struct Graphics
 	Device device;
 	ScreenContext screen;
 
-	ResourceHeap renderTargetViewHeap;
-	ResourceHeap depthStencilViewHeap;
+	ResourceViewHeap renderTargetViewHeap;
+	ResourceViewHeap depthStencilViewHeap;
 
 	CommandQueue commandQueue;
 
@@ -121,7 +121,7 @@ struct Scene
 
 	TransformBuffer transformBuffer;
 	UINT8* pCbvData;
-	ResourceHeap cbvHeap;
+	ResourceViewHeap cbvHeap;
 
 	D3D12_VIEWPORT viewport;
 	D3D12_RECT scissorRect;
