@@ -160,8 +160,8 @@ bool SetupScene()
 	scene.cbvHeap.CreateConstantBufferView({ sizeof(scene.transformBuffer), D3D12_TEXTURE_LAYOUT_ROW_MAJOR });
 
 	{
-		auto csvView = scene.cbvHeap.NativeResourcePtr(0);
-		csvView->Map(0, nullptr, reinterpret_cast<void**>(&scene.pCbvData));
+		auto cbvView = scene.cbvHeap.NativeResourcePtr(0);
+		cbvView->Map(0, nullptr, reinterpret_cast<void**>(&scene.pCbvData));
 
 		scene.transformBuffer.World = DirectX::XMMatrixIdentity();
 		scene.transformBuffer.View = DirectX::XMMatrixLookAtLH({ 0.0f, 0.0f, 5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
@@ -269,6 +269,10 @@ void Draw()
 
 	scene.transformBuffer.World = DirectX::XMMatrixRotationY(scene.rotateAngle);
 	memcpy(scene.pCbvData, &scene.transformBuffer, sizeof(scene.transformBuffer));
+	//{
+	//	auto data = scene.cbvHeap.ResourcePtr(0)->ScopedMap(0);
+	//	memcpy(data.NativePtr(), &scene.transformBuffer, sizeof(scene.transformBuffer));
+	//}
 
 	gfx.commandContainer.ClearState();
 	gfx.pCommandList->Open(scene.pPipelineState.Get());
