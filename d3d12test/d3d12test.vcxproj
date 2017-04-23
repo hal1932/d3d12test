@@ -133,6 +133,7 @@
     <ClCompile Include="Resource.cpp" />
     <ClCompile Include="ResourceViewHeap.cpp" />
     <ClCompile Include="ScreenContext.cpp" />
+    <ClCompile Include="Shader.cpp" />
     <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -166,6 +167,7 @@
     <ClInclude Include="Resource.h" />
     <ClInclude Include="ResourceViewHeap.h" />
     <ClInclude Include="ScreenContext.h" />
+    <ClInclude Include="Shader.h" />
     <ClInclude Include="Window.h" />
     <ClInclude Include="WindowEvent.h" />
   </ItemGroup>

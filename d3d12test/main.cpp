@@ -24,6 +24,7 @@
 #include "CommandList.h"
 #include "ResourceViewHeap.h"
 #include "Resource.h"
+#include "Shader.h"
 
 #pragma comment(lib, "D3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -136,16 +137,6 @@ struct Vertex
 	float Color[4];
 };
 
-ComPtr<ID3DBlob> CompileShader(LPCWSTR filepath, const TCHAR* entryPoint, const TCHAR* profile)
-{
-	ComPtr<ID3DBlob> shader;
-	ComPtr<ID3DBlob> error;
-
-	ThrowIfFailed(D3DCompileFromFile(filepath, nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, entryPoint, profile, D3DCOMPILE_DEBUG, 0, &shader, &error));
-
-	return shader;
-}
-
 bool SetupScene()
 {
 	auto pNativeDevice = gfx.device.NativePtr();
@@ -212,16 +203,12 @@ bool SetupScene()
 	}
 
 	{
-		auto pVS = CompileShader(L"assets/SimpleVS.hlsl", _T("VSFunc"), _T("vs_5_0"));
-		auto pPS = CompileShader(L"assets/SimplePS.hlsl", _T("PSFunc"), _T("ps_5_0"));
+		Shader vs;
+		vs.CreateFromSourceFile({ L"assets/SimpleVS.hlsl", _T("VSFunc"), _T("vs_5_0") });
+		vs.CreateInputLayout();
 
-		D3D12_INPUT_ELEMENT_DESC inputElements[] =
-		{
-			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "VTX_COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		};
+		Shader ps;
+		ps.CreateFromSourceFile({ L"assets/SimplePS.hlsl", _T("PSFunc"), _T("ps_5_0") });
 
 		D3D12_RASTERIZER_DESC descRS = {};
 		descRS.FillMode = D3D12_FILL_MODE_SOLID;
@@ -245,10 +232,10 @@ bool SetupScene()
 		}
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {};
-		desc.InputLayout = { inputElements, _countof(inputElements) };
+		desc.InputLayout = vs.NativeInputLayout();
 		desc.pRootSignature = scene.pRootSignature.Get();
-		desc.VS = { reinterpret_cast<UINT8*>(pVS->GetBufferPointer()), pVS->GetBufferSize() };
-		desc.PS = { reinterpret_cast<UINT8*>(pPS->GetBufferPointer()), pPS->GetBufferSize() };
+		desc.VS = vs.NativeByteCode();
+		desc.PS = ps.NativeByteCode();
 		desc.RasterizerState = descRS;
 		desc.BlendState = descBS;
 		desc.DepthStencilState.DepthEnable = FALSE;
@@ -257,7 +244,7 @@ bool SetupScene()
 		desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 		desc.NumRenderTargets = 1;
 		desc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-		desc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+		desc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 		desc.SampleDesc.Count = 1;
 
 		ThrowIfFailed(pNativeDevice->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&scene.pPipelineState)));
@@ -291,8 +278,10 @@ void Draw()
 	{
 		auto heap = scene.cbvHeap.NativePtr();
 		pCmdList->SetDescriptorHeaps(1, &heap);
+
 		pCmdList->SetGraphicsRootSignature(scene.pRootSignature.Get());
-		pCmdList->SetGraphicsRootDescriptorTable(0, heap->GetGPUDescriptorHandleForHeapStart());
+
+		pCmdList->SetGraphicsRootDescriptorTable(0, scene.cbvHeap.GpuHandle(0));
 	}
 
 	scene.viewport = { 0.0f, 0.0f, (float)cScreenWidth, (float)cScreenHeight, 0.0f, 1.0f };
