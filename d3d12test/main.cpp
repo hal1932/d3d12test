@@ -121,8 +121,8 @@ struct Scene
 	Resource vertexBuffer;
 
 	TransformBuffer transformBuffer;
-	UINT8* pCbvData;
 	ResourceViewHeap cbvHeap;
+	MappedResource cbvData;
 
 	D3D12_VIEWPORT viewport;
 	D3D12_RECT scissorRect;
@@ -151,23 +151,21 @@ bool SetupScene()
 
 		scene.vertexBuffer.CreateVertexBuffer(&gfx.device, sizeof(vertices));
 
-		auto pData = scene.vertexBuffer.Map(0);
-		memcpy(pData, vertices, sizeof(vertices));
-		scene.vertexBuffer.Unmap(0);
+		auto data = scene.vertexBuffer.ScopedMap(0);
+		memcpy(data.NativePtr(), vertices, sizeof(vertices));
 	}
 	
 	scene.cbvHeap.CreateHeap(&gfx.device, { HeapDesc::ViewType::ConstantBufferView, 1 });
 	scene.cbvHeap.CreateConstantBufferView({ sizeof(scene.transformBuffer), D3D12_TEXTURE_LAYOUT_ROW_MAJOR });
 
 	{
-		auto cbvView = scene.cbvHeap.NativeResourcePtr(0);
-		cbvView->Map(0, nullptr, reinterpret_cast<void**>(&scene.pCbvData));
+		scene.cbvData = scene.cbvHeap.ResourcePtr(0)->ScopedMap(0);
 
 		scene.transformBuffer.World = DirectX::XMMatrixIdentity();
 		scene.transformBuffer.View = DirectX::XMMatrixLookAtLH({ 0.0f, 0.0f, 5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
 		scene.transformBuffer.Proj = DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4, (float)cScreenWidth / (float)cScreenHeight, 1.0f, 1000.f);
 
-		memcpy(scene.pCbvData, &scene.transformBuffer, sizeof(scene.transformBuffer));
+		memcpy(scene.cbvData.NativePtr(), &scene.transformBuffer, sizeof(scene.transformBuffer));
 	}
 
 	{
@@ -268,11 +266,7 @@ void Draw()
 	scene.rotateAngle += 0.1f;
 
 	scene.transformBuffer.World = DirectX::XMMatrixRotationY(scene.rotateAngle);
-	memcpy(scene.pCbvData, &scene.transformBuffer, sizeof(scene.transformBuffer));
-	//{
-	//	auto data = scene.cbvHeap.ResourcePtr(0)->ScopedMap(0);
-	//	memcpy(data.NativePtr(), &scene.transformBuffer, sizeof(scene.transformBuffer));
-	//}
+	memcpy(scene.cbvData.NativePtr(), &scene.transformBuffer, sizeof(scene.transformBuffer));
 
 	gfx.commandContainer.ClearState();
 	gfx.pCommandList->Open(scene.pPipelineState.Get());
@@ -332,8 +326,6 @@ void Draw()
 
 void ShutdownScene()
 {
-	scene.cbvHeap.NativeResourcePtr(0)->Unmap(0, nullptr);
-
 	scene.pPipelineState.Reset();
 	scene.pRootSignature.Reset();
 }

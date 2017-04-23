@@ -22,16 +22,9 @@ struct ResourceDesc
 class MappedResource
 {
 public:
-	MappedResource(ID3D12Resource* pResource, int subresource)
-		: pResource_(pResource),
-		subresource_(subresource)
-	{
-		auto result = pResource->Map(subresource, nullptr, &pData_);
-		if (FAILED(result))
-		{
-			pData_ = nullptr;
-		}
-	}
+	MappedResource()
+		: pResource_(nullptr)
+	{}
 
 	MappedResource(MappedResource& other)
 		: pData_(other.pData_),
@@ -48,6 +41,20 @@ public:
 		{
 			pResource_->Unmap(subresource_, nullptr);
 		}
+	}
+
+	MappedResource& Map(ID3D12Resource* pResource, int subresource)
+	{
+		auto result = pResource->Map(subresource, nullptr, &pData_);
+		if (FAILED(result))
+		{
+			pData_ = nullptr;
+		}
+
+		pResource_ = pResource;
+		subresource_ = subresource;
+
+		return *this;
 	}
 
 	void* NativePtr() { return pData_; }
@@ -93,7 +100,7 @@ public:
 
 	MappedResource ScopedMap(int subresource)
 	{
-		return MappedResource(pResource_, subresource);
+		return MappedResource().Map(pResource_, subresource);
 	}
 
 	D3D12_VERTEX_BUFFER_VIEW GetVertexBufferView(int stride)
