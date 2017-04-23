@@ -2,6 +2,7 @@
 #include "common.h"
 #include "Device.h"
 #include "ScreenContext.h"
+#include "Resource.h"
 
 ResourceViewHeap::ResourceViewHeap()
 	: pDevice_(nullptr),
@@ -13,7 +14,7 @@ ResourceViewHeap::~ResourceViewHeap()
 {
 	for (auto pResource : resourcePtrs_)
 	{
-		SafeRelease(&pResource);
+		SafeDelete(&pResource);
 	}
 
 	SafeRelease(&pDescriptorHeap_);
@@ -24,6 +25,18 @@ D3D12_CPU_DESCRIPTOR_HANDLE ResourceViewHeap::CpuHandle(int index)
 	auto handle = pDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
 	handle.ptr += index * descriptorSize_;
 	return handle;
+}
+
+D3D12_GPU_DESCRIPTOR_HANDLE ResourceViewHeap::GpuHandle(int index)
+{
+	auto handle = pDescriptorHeap_->GetGPUDescriptorHandleForHeapStart();
+	handle.ptr += index * descriptorSize_;
+	return handle;
+}
+
+ID3D12Resource* ResourceViewHeap::NativeResourcePtr(int index)
+{
+	return ResourcePtr(index)->NativePtr();
 }
 
 HRESULT ResourceViewHeap::CreateHeap(Device* pDevice, const HeapDesc& desc)
@@ -63,7 +76,7 @@ HRESULT ResourceViewHeap::CreateRenderTargetViewFromBackBuffer(ScreenContext* pS
 		{
 			return result;
 		}
-		resourcePtrs_.push_back(pView);
+		resourcePtrs_.push_back(new Resource(pView));
 
 		pNativeDevice->CreateRenderTargetView(pView, &viewDesc, handle);
 		handle.ptr += descriptorSize_;
@@ -74,19 +87,13 @@ HRESULT ResourceViewHeap::CreateRenderTargetViewFromBackBuffer(ScreenContext* pS
 
 HRESULT ResourceViewHeap::CreateDepthStencilView(ScreenContext* pContext, const DsvDesc& desc)
 {
-	D3D12_HEAP_PROPERTIES heapProp = {};
-	heapProp.Type = D3D12_HEAP_TYPE_DEFAULT;
-	heapProp.CreationNodeMask = 1;
-	heapProp.VisibleNodeMask = 1;
-
-	D3D12_RESOURCE_DESC resDesc = {};
-	resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-	resDesc.Width = static_cast<UINT64>(desc.Width);
-	resDesc.Height = static_cast<UINT64>(desc.Height);
-	resDesc.DepthOrArraySize = 1;
-	resDesc.Format = desc.Format;
-	resDesc.SampleDesc.Count = 1;
-	resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+	ResourceDesc resourceDesc = {};
+	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	resourceDesc.Width = desc.Width;
+	resourceDesc.Height = desc.Height;
+	resourceDesc.Format = desc.Format;
+	resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+	resourceDesc.States = D3D12_RESOURCE_STATE_DEPTH_WRITE;
 
 	D3D12_CLEAR_VALUE clearValue = {};
 	clearValue.Format = desc.Format;
@@ -97,12 +104,8 @@ HRESULT ResourceViewHeap::CreateDepthStencilView(ScreenContext* pContext, const 
 
 	auto pNativeDevice = pDevice_->NativePtr();
 
-	ID3D12Resource* pView;
-	result = pNativeDevice->CreateCommittedResource(
-		&heapProp, D3D12_HEAP_FLAG_NONE,
-		&resDesc, D3D12_RESOURCE_STATE_DEPTH_WRITE,
-		&clearValue,
-		IID_PPV_ARGS(&pView));
+	auto pResource = new Resource();
+	result = pResource->CreateCommited(pDevice_, resourceDesc, clearValue);
 	if (FAILED(result))
 	{
 		return result;
@@ -113,52 +116,41 @@ HRESULT ResourceViewHeap::CreateDepthStencilView(ScreenContext* pContext, const 
 	viewDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 
 	auto handle = CpuHandle(static_cast<int>(resourcePtrs_.size()));
-	pNativeDevice->CreateDepthStencilView(pView, &viewDesc, handle);
+	pNativeDevice->CreateDepthStencilView(pResource->NativePtr(), &viewDesc, handle);
 
-	resourcePtrs_.push_back(pView);
+	resourcePtrs_.push_back(pResource);
 
 	return result;
 }
 
 HRESULT ResourceViewHeap::CreateConstantBufferView(const CsvDesc& desc)
 {
-	D3D12_HEAP_PROPERTIES heapProp = {};
-	heapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
-	heapProp.CreationNodeMask = 1;
-	heapProp.VisibleNodeMask = 1;
-
-	D3D12_RESOURCE_DESC resDesc = {};
-	resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	resDesc.Width = static_cast<UINT64>(desc.Size);
-	resDesc.Height = 1;
-	resDesc.DepthOrArraySize = 1;
-	resDesc.MipLevels = 1;
-	resDesc.SampleDesc.Count = 1;
-	resDesc.Layout = desc.Layout;
+	ResourceDesc resourceDesc = {};
+	resourceDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
+	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	resourceDesc.Width = desc.Size;
+	resourceDesc.Layout = desc.Layout;
+	resourceDesc.States = D3D12_RESOURCE_STATE_GENERIC_READ;
 
 	HRESULT result;
 
 	auto pNativeDevice = pDevice_->NativePtr();
 
-	ID3D12Resource* pView;
-	result = pNativeDevice->CreateCommittedResource(
-		&heapProp, D3D12_HEAP_FLAG_NONE,
-		&resDesc, D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(&pView));
+	auto pResource = new Resource();
+	result = pResource->CreateCommited(pDevice_, resourceDesc);
 	if (FAILED(result))
 	{
 		return result;
 	}
 
 	D3D12_CONSTANT_BUFFER_VIEW_DESC viewDesc = {};
-	viewDesc.BufferLocation = pView->GetGPUVirtualAddress();
+	viewDesc.BufferLocation = pResource->NativePtr()->GetGPUVirtualAddress();
 	viewDesc.SizeInBytes = static_cast<UINT>(desc.Size);
 
 	auto handle = CpuHandle(static_cast<int>(resourcePtrs_.size()));
 	pNativeDevice->CreateConstantBufferView(&viewDesc, handle);
 
-	resourcePtrs_.push_back(pView);
+	resourcePtrs_.push_back(pResource);
 
 	return result;
 }

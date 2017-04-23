@@ -7,13 +7,15 @@ class Device;
 struct ResourceDesc
 {
 	D3D12_HEAP_TYPE HeapType = D3D12_HEAP_TYPE_DEFAULT;
+	DXGI_FORMAT Format = DXGI_FORMAT_UNKNOWN;
 	D3D12_RESOURCE_DIMENSION Dimension;
 	int Width;
 	int Height = 1;
 	short Depth = 1;
 	short MipLevels = 1;
 	int SampleCount = 1;
-	D3D12_TEXTURE_LAYOUT Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	D3D12_TEXTURE_LAYOUT Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+	D3D12_RESOURCE_FLAGS Flags = D3D12_RESOURCE_FLAG_NONE;
 	D3D12_RESOURCE_STATES States;
 };
 
@@ -21,11 +23,13 @@ class Resource
 {
 public:
 	Resource();
+	Resource(ID3D12Resource* pResource) : pResource_(pResource) {}
 	~Resource();
 
 	ID3D12Resource* NativePtr() { return pResource_; }
 
 	HRESULT CreateCommited(Device* pDevice, const ResourceDesc& desc);
+	HRESULT CreateCommited(Device* pDevice, const ResourceDesc& desc, const D3D12_CLEAR_VALUE& clearValue);
 
 	HRESULT CreateVertexBuffer(Device* pDevice, int size)
 	{
@@ -33,6 +37,7 @@ public:
 		desc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
 		desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
 		desc.Width = size;
+		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 		desc.States = D3D12_RESOURCE_STATE_GENERIC_READ;
 
 		return CreateCommited(pDevice, desc);
@@ -60,5 +65,7 @@ public:
 private:
 	ID3D12Resource* pResource_;
 	ResourceDesc desc_;
+
+	HRESULT CreateCommitedImpl_(Device* pDevice, const ResourceDesc& desc, const D3D12_CLEAR_VALUE* pClearValue);
 };
 
