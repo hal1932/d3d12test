@@ -19,6 +19,45 @@ struct ResourceDesc
 	D3D12_RESOURCE_STATES States;
 };
 
+class MappedResource
+{
+public:
+	MappedResource(ID3D12Resource* pResource, int subresource)
+		: pResource_(pResource),
+		subresource_(subresource)
+	{
+		auto result = pResource->Map(subresource, nullptr, &pData_);
+		if (FAILED(result))
+		{
+			pData_ = nullptr;
+		}
+	}
+
+	MappedResource(MappedResource& other)
+		: pData_(other.pData_),
+		pResource_(other.pResource_),
+		subresource_(other.subresource_)
+	{
+		other.pData_ = nullptr;
+		other.pResource_ = nullptr;
+	}
+
+	~MappedResource()
+	{
+		if (pData_ != nullptr)
+		{
+			pResource_->Unmap(subresource_, nullptr);
+		}
+	}
+
+	void* NativePtr() { return pData_; }
+
+private:
+	void* pData_;
+	ID3D12Resource* pResource_;
+	int subresource_;
+};
+
 class Resource
 {
 public:
@@ -51,6 +90,11 @@ public:
 	}
 
 	void Unmap(int subresource) { pResource_->Unmap(subresource, nullptr); }
+
+	MappedResource ScopedMap(int subresource)
+	{
+		return MappedResource(pResource_, subresource);
+	}
 
 	D3D12_VERTEX_BUFFER_VIEW GetVertexBufferView(int stride)
 	{
