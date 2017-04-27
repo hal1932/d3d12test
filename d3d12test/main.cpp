@@ -122,7 +122,7 @@ struct Scene
 
 	TransformBuffer transformBuffer;
 	ResourceViewHeap cbvHeap;
-	MappedResource cbvData;
+	void* pCbvData;
 
 	D3D12_VIEWPORT viewport;
 	D3D12_RECT scissorRect;
@@ -159,13 +159,13 @@ bool SetupScene()
 	scene.cbvHeap.CreateConstantBufferView({ sizeof(scene.transformBuffer), D3D12_TEXTURE_LAYOUT_ROW_MAJOR });
 
 	{
-		scene.cbvData = scene.cbvHeap.ResourcePtr(0)->ScopedMap(0);
+		scene.pCbvData = scene.cbvHeap.ResourcePtr(0)->Map(0);
 
 		scene.transformBuffer.World = DirectX::XMMatrixIdentity();
 		scene.transformBuffer.View = DirectX::XMMatrixLookAtLH({ 0.0f, 0.0f, 5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
 		scene.transformBuffer.Proj = DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4, (float)cScreenWidth / (float)cScreenHeight, 1.0f, 1000.f);
 
-		memcpy(scene.cbvData.NativePtr(), &scene.transformBuffer, sizeof(scene.transformBuffer));
+		memcpy(scene.pCbvData, &scene.transformBuffer, sizeof(scene.transformBuffer));
 	}
 
 	{
@@ -266,7 +266,7 @@ void Draw()
 	scene.rotateAngle += 0.1f;
 
 	scene.transformBuffer.World = DirectX::XMMatrixRotationY(scene.rotateAngle);
-	memcpy(scene.cbvData.NativePtr(), &scene.transformBuffer, sizeof(scene.transformBuffer));
+	memcpy(scene.pCbvData, &scene.transformBuffer, sizeof(scene.transformBuffer));
 
 	gfx.commandContainer.ClearState();
 	gfx.pCommandList->Open(scene.pPipelineState.Get());
@@ -326,6 +326,7 @@ void Draw()
 
 void ShutdownScene()
 {
+	scene.cbvHeap.ResourcePtr(0)->Unmap(0);
 	scene.pPipelineState.Reset();
 	scene.pRootSignature.Reset();
 }
