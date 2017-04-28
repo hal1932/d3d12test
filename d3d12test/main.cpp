@@ -193,7 +193,7 @@ bool SetupScene()
 
 		D3D12_RASTERIZER_DESC descRS = {};
 		descRS.FillMode = D3D12_FILL_MODE_SOLID;
-		descRS.CullMode = D3D12_CULL_MODE_NONE;
+		descRS.CullMode = D3D12_CULL_MODE_BACK;
 		descRS.DepthClipEnable = TRUE;
 
 		D3D12_RENDER_TARGET_BLEND_DESC descRTBS = {
@@ -246,7 +246,7 @@ void WaitForCommandExecution()
 
 void Draw()
 {
-	scene.rotateAngle += 0.1f;
+	scene.rotateAngle += 0.01f;
 
 	scene.transformBuffer.World = DirectX::XMMatrixRotationY(scene.rotateAngle);
 	memcpy(scene.pCbvData, &scene.transformBuffer, sizeof(scene.transformBuffer));
@@ -283,7 +283,7 @@ void Draw()
 
 	pCmdList->OMSetRenderTargets(1, &handleRTV, FALSE, &handleDSV);
 
-	FLOAT clearValue[] = { 0.0f, 0.0f, 1.0f, 1.0f };
+	FLOAT clearValue[] = { 0.2f, 0.2f, 0.5f, 1.0f };
 	pCmdList->ClearRenderTargetView(handleRTV, clearValue, 0, nullptr);
 	pCmdList->ClearDepthStencilView(handleDSV, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 

@@ -1,6 +1,7 @@
 #pragma once
 #include <fbxsdk.h>
 #include <Windows.h>
+#include <DirectXMath.h>
 
 #ifdef _DEBUG
 #	pragma comment(lib, "libfbxsdk-md.lib")
@@ -16,7 +17,8 @@ class FbxModel
 public:
 	struct Vertex
 	{
-		float Position[3];
+		DirectX::XMFLOAT3 Position;
+		DirectX::XMFLOAT3 Normal;
 	};
 
 public:

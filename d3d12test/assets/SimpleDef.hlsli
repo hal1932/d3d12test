@@ -1,17 +1,18 @@
 struct VSInput
 {
-	float3  Position : POSITION;
+	float3 Position : POSITION;
+	float3 Normal   : NORMAL;
 };
 
 struct VSOutput
 {
-	float4  Position : SV_POSITION;
-	float4  Color    : VTX_COLOR;
+	float4 Position : SV_POSITION;
+	float3 Normal   : NORMAL;
 };
 
 struct PSOutput
 {
-	float4  Color   : SV_TARGET0;
+	float4 Color   : SV_TARGET0;
 };
 
 
