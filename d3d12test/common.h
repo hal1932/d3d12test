@@ -6,6 +6,12 @@
 #pragma comment(lib, "D3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 
+typedef unsigned char uchar;
+typedef unsigned short ushort;
+typedef unsigned int uint;
+typedef unsigned long ulong;
+typedef unsigned long long ulonglong;
+
 typedef std::basic_string<TCHAR> tstring;
 
 template<class T>
@@ -14,6 +20,16 @@ inline void SafeRelease(T** ppObj)
 	if (*ppObj != nullptr)
 	{
 		(*ppObj)->Release();
+		*ppObj = nullptr;
+	}
+}
+
+template<class T>
+inline void SafeDestroy(T** ppObj)
+{
+	if (*ppObj != nullptr)
+	{
+		(*ppObj)->Destroy();
 		*ppObj = nullptr;
 	}
 }

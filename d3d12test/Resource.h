@@ -89,6 +89,11 @@ public:
 		return CreateCommited(pDevice, desc);
 	}
 
+	HRESULT CreateIndexBuffer(Device* pDevice, int size)
+	{
+		return CreateVertexBuffer(pDevice, size);
+	}
+
 	void* Map(int subresource)
 	{
 		void* pData;
@@ -110,6 +115,16 @@ public:
 			pResource_->GetGPUVirtualAddress(),
 			static_cast<UINT>(desc_.Width),
 			static_cast<UINT>(stride)
+		};
+	}
+
+	D3D12_INDEX_BUFFER_VIEW GetIndexBufferView(DXGI_FORMAT format)
+	{
+		return
+		{
+			pResource_->GetGPUVirtualAddress(),
+			static_cast<UINT>(desc_.Width),
+			format
 		};
 	}
 

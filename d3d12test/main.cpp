@@ -25,6 +25,7 @@
 #include "ResourceViewHeap.h"
 #include "Resource.h"
 #include "Shader.h"
+#include "FbxModel.h"
 
 #pragma comment(lib, "D3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -118,7 +119,7 @@ struct Scene
 	ComPtr<ID3D12PipelineState> pPipelineState;
 	float rotateAngle;
 
-	Resource vertexBuffer;
+	FbxModel* pModel;
 
 	TransformBuffer transformBuffer;
 	ResourceViewHeap cbvHeap;
@@ -129,31 +130,13 @@ struct Scene
 };
 Scene scene;
 
-struct Vertex
-{
-	float Position[3];
-	float Normal[3];
-	float TexCoord[2];
-	float Color[4];
-};
-
 bool SetupScene()
 {
 	auto pNativeDevice = gfx.device.NativePtr();
 
-	{
-		Vertex vertices[] =
-		{
-			{ {  0.0f,  1.0f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, 1.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
-			{ {  1.0f, -1.0f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 1.0f, 0.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } },
-			{ { -1.0f, -1.0f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }
-		};
-
-		scene.vertexBuffer.CreateVertexBuffer(&gfx.device, sizeof(vertices));
-
-		auto data = scene.vertexBuffer.ScopedMap(0);
-		memcpy(data.NativePtr(), vertices, sizeof(vertices));
-	}
+	scene.pModel = new FbxModel();
+	scene.pModel->LoadFromFile("assets/test_b.fbx");
+	scene.pModel->UpdateResources(&gfx.device);
 	
 	scene.cbvHeap.CreateHeap(&gfx.device, { HeapDesc::ViewType::ConstantBufferView, 1 });
 	scene.cbvHeap.CreateConstantBufferView({ sizeof(scene.transformBuffer), D3D12_TEXTURE_LAYOUT_ROW_MAJOR });
@@ -306,10 +289,13 @@ void Draw()
 
 	pCmdList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	auto vbView = scene.vertexBuffer.GetVertexBufferView(sizeof(Vertex));
+	auto vbView = scene.pModel->VertexBuffer()->GetVertexBufferView(sizeof(FbxModel::Vertex));
 	pCmdList->IASetVertexBuffers(0, 1, &vbView);
 
-	pCmdList->DrawInstanced(3, 1, 0, 0);
+	auto ibView = scene.pModel->IndexBuffer()->GetIndexBufferView(DXGI_FORMAT_R16_UINT);
+	pCmdList->IASetIndexBuffer(&ibView);
+
+	pCmdList->DrawIndexedInstanced(scene.pModel->IndexCount(), 1, 0, 0, 0);
 
 	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
@@ -326,6 +312,7 @@ void Draw()
 
 void ShutdownScene()
 {
+	SafeDelete(&scene.pModel);
 	scene.cbvHeap.ResourcePtr(0)->Unmap(0);
 	scene.pPipelineState.Reset();
 	scene.pRootSignature.Reset();
@@ -338,6 +325,8 @@ void ShutdownGraphics()
 
 int MainImpl(int, char**)
 {
+	FbxModel::Setup();
+
 	auto hInstance = GetModuleHandle(nullptr);
 
 	Window window;
@@ -376,6 +365,8 @@ int MainImpl(int, char**)
 	ShutdownGraphics();
 
 	window.Close();
+
+	FbxModel::Shutdown();
 
 	return 0;
 }
