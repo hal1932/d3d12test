@@ -135,7 +135,7 @@ bool SetupScene()
 	auto pNativeDevice = gfx.device.NativePtr();
 
 	scene.pModel = new FbxModel();
-	scene.pModel->LoadFromFile("assets/test_b.fbx");
+	scene.pModel->LoadFromFile("assets/test_a.fbx");
 	scene.pModel->UpdateResources(&gfx.device);
 	
 	scene.cbvHeap.CreateHeap(&gfx.device, { HeapDesc::ViewType::ConstantBufferView, 1 });

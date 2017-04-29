@@ -2,12 +2,14 @@ struct VSInput
 {
 	float3 Position : POSITION;
 	float3 Normal   : NORMAL;
+	float2 Texture0 : TEXTURE0;
 };
 
 struct VSOutput
 {
 	float4 Position : SV_POSITION;
 	float3 Normal   : NORMAL;
+	float2 Texture0 : TEXTURE0;
 };
 
 struct PSOutput

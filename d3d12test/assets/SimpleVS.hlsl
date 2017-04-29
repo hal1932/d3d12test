@@ -11,6 +11,7 @@ VSOutput VSFunc(const VSInput input)
 
 	output.Position = projPos;
 	output.Normal = input.Normal;
+	output.Texture0 = input.Texture0;
 
 	return output;
 }

@@ -19,6 +19,7 @@ public:
 	{
 		DirectX::XMFLOAT3 Position;
 		DirectX::XMFLOAT3 Normal;
+		DirectX::XMFLOAT2 Texture0;
 	};
 
 public:
@@ -40,7 +41,6 @@ public:
 private:
 	static FbxManager* spFbxManager_;
 
-	FbxImporter* pSceneImporter_ = nullptr;
 	FbxScene* pScene_ = nullptr;
 
 	const char* pName_ = nullptr;
@@ -51,10 +51,8 @@ private:
 	Resource* pIndexBuffer_ = nullptr;
 	int indexCount_;
 
-	HRESULT UpdateResourcesRec_(const FbxNode* pNode, Device* pDevice);
-	void UpdateMeshResources_(const FbxMesh* pMesh, Device* pDevice);
-	void LoadMeshPolygons_();
-	void LoadMeshMaterial_();
-	void LoadMeshTexture_();
+	HRESULT UpdateResourcesRec_(FbxNode* pNode, Device* pDevice);
+	void UpdateMeshResources_(FbxMesh* pMesh, Device* pDevice);
+	void UpdateMaterialResources_(FbxGeometry* pMesh, Device* pDevice);
 };
 
