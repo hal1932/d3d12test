@@ -86,10 +86,13 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>D:\Program Files\Autodesk\FBX\FBX SDK\2018.1.1\include</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <EntryPointSymbol>
       </EntryPointSymbol>
+      <AdditionalLibraryDirectories>D:\Program Files\Autodesk\FBX\FBX SDK\2018.1.1\lib\vs2015\x64\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -115,12 +118,15 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>D:\Program Files\Autodesk\FBX\FBX SDK\2018.1.1\include</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <EntryPointSymbol>
       </EntryPointSymbol>
+      <AdditionalLibraryDirectories>D:\Program Files\Autodesk\FBX\FBX SDK\2018.1.1\lib\vs2015\x64\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -128,6 +134,7 @@
     <ClCompile Include="CommandList.cpp" />
     <ClCompile Include="CommandQueue.cpp" />
     <ClCompile Include="Device.cpp" />
+    <ClCompile Include="FbxModel.cpp" />
     <ClCompile Include="GpuFence.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Resource.cpp" />
@@ -138,6 +145,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="assets\SimpleDef.hlsli" />
+    <None Include="assets\test_a.fbx" />
+    <None Include="assets\test_b.fbx" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="assets\SimplePS.hlsl">
@@ -163,6 +172,7 @@
     <ClInclude Include="CommandQueue.h" />
     <ClInclude Include="common.h" />
     <ClInclude Include="Device.h" />
+    <ClInclude Include="FbxModel.h" />
     <ClInclude Include="GpuFence.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="ResourceViewHeap.h" />
