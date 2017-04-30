@@ -1,5 +1,6 @@
 #pragma once
 
+#include <DirectXMath.h>
 #include <Windows.h>
 #include <string>
 
@@ -63,6 +64,15 @@ inline void SafeDeleteArray(T** ppObjs)
 	}
 }
 
+template<class T>
+inline void SafeDeleteSequence(T* pSeq)
+{
+	for (auto ptr : *pSeq)
+	{
+		SafeDelete(&ptr);
+	}
+}
+
 inline
 tstring GetLastErrorMessage(HRESULT hr = 0)
 {
@@ -86,4 +96,11 @@ inline void ThrowIfFailed(HRESULT hr)
 		auto err = GetLastErrorMessage(hr);
 		throw T(err.c_str());
 	}
+}
+
+inline void XMFLoat3Normalize(DirectX::XMFLOAT3* pOut, const DirectX::XMFLOAT3* pIn)
+{
+	auto v = DirectX::XMLoadFloat3(pIn);
+	v = DirectX::XMVector3Normalize(v);
+	DirectX::XMStoreFloat3(pOut, v);
 }

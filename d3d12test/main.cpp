@@ -25,7 +25,9 @@
 #include "ResourceViewHeap.h"
 #include "Resource.h"
 #include "Shader.h"
-#include "FbxModel.h"
+#include "fbxModel.h"
+#include "fbxMesh.h"
+#include "fbxMaterial.h"
 
 #pragma comment(lib, "D3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -119,10 +121,10 @@ struct Scene
 	ComPtr<ID3D12PipelineState> pPipelineState;
 	float rotateAngle;
 
-	FbxModel* pModel;
+	fbx::Model* pModel;
 
 	TransformBuffer transformBuffer;
-	ResourceViewHeap cbvHeap;
+	ResourceViewHeap cbSrUavHeap;
 	void* pCbvData;
 
 	D3D12_VIEWPORT viewport;
@@ -134,16 +136,16 @@ bool SetupScene()
 {
 	auto pNativeDevice = gfx.device.NativePtr();
 
-	scene.pModel = new FbxModel();
+	scene.pModel = new fbx::Model();
 	scene.pModel->LoadFromFile("assets/test_a.fbx");
 	scene.pModel->UpdateResources(&gfx.device);
 	scene.pModel->UpdateSubresources(gfx.pCommandList, &gfx.commandQueue);
 	
-	scene.cbvHeap.CreateHeap(&gfx.device, { HeapDesc::ViewType::ConstantBufferView, 1 });
-	scene.cbvHeap.CreateConstantBufferView({ sizeof(scene.transformBuffer), D3D12_TEXTURE_LAYOUT_ROW_MAJOR });
+	scene.cbSrUavHeap.CreateHeap(&gfx.device, { HeapDesc::ViewType::CbSrUaView, 2 });
+	scene.cbSrUavHeap.CreateConstantBufferView({ sizeof(scene.transformBuffer), D3D12_TEXTURE_LAYOUT_ROW_MAJOR });
 
 	{
-		scene.pCbvData = scene.cbvHeap.ResourcePtr(0)->Map(0);
+		scene.pCbvData = scene.cbSrUavHeap.ResourcePtr(0)->Map(0);
 
 		scene.transformBuffer.World = DirectX::XMMatrixIdentity();
 		scene.transformBuffer.View = DirectX::XMMatrixLookAtLH({ 0.0f, 0.0f, 5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
@@ -258,12 +260,12 @@ void Draw()
 	auto pCmdList = gfx.pCommandList->AsGraphicsList();
 
 	{
-		auto heap = scene.cbvHeap.NativePtr();
+		auto heap = scene.cbSrUavHeap.NativePtr();
 		pCmdList->SetDescriptorHeaps(1, &heap);
 
 		pCmdList->SetGraphicsRootSignature(scene.pRootSignature.Get());
 
-		pCmdList->SetGraphicsRootDescriptorTable(0, scene.cbvHeap.GpuHandle(0));
+		pCmdList->SetGraphicsRootDescriptorTable(0, scene.cbSrUavHeap.GpuHandle(0));
 	}
 
 	scene.viewport = { 0.0f, 0.0f, (float)cScreenWidth, (float)cScreenHeight, 0.0f, 1.0f };
@@ -290,13 +292,14 @@ void Draw()
 
 	pCmdList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	auto vbView = scene.pModel->VertexBuffer()->GetVertexBufferView(sizeof(FbxModel::Vertex));
+	const auto& pMesh = scene.pModel->MeshPtr(0);
+	auto vbView = pMesh->VertexBuffer()->GetVertexBufferView(sizeof(fbx::Mesh::Vertex));
 	pCmdList->IASetVertexBuffers(0, 1, &vbView);
 
-	auto ibView = scene.pModel->IndexBuffer()->GetIndexBufferView(DXGI_FORMAT_R16_UINT);
+	auto ibView = pMesh->IndexBuffer()->GetIndexBufferView(DXGI_FORMAT_R16_UINT);
 	pCmdList->IASetIndexBuffer(&ibView);
 
-	pCmdList->DrawIndexedInstanced(scene.pModel->IndexCount(), 1, 0, 0, 0);
+	pCmdList->DrawIndexedInstanced(pMesh->IndexCount(), 1, 0, 0, 0);
 
 	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
@@ -314,7 +317,7 @@ void Draw()
 void ShutdownScene()
 {
 	SafeDelete(&scene.pModel);
-	scene.cbvHeap.ResourcePtr(0)->Unmap(0);
+	scene.cbSrUavHeap.ResourcePtr(0)->Unmap(0);
 	scene.pPipelineState.Reset();
 	scene.pRootSignature.Reset();
 }
@@ -326,7 +329,7 @@ void ShutdownGraphics()
 
 int MainImpl(int, char**)
 {
-	FbxModel::Setup();
+	fbx::Model::Setup();
 
 	auto hInstance = GetModuleHandle(nullptr);
 
@@ -367,7 +370,7 @@ int MainImpl(int, char**)
 
 	window.Close();
 
-	FbxModel::Shutdown();
+	fbx::Model::Shutdown();
 
 	return 0;
 }

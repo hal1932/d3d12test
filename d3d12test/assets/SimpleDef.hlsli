@@ -25,3 +25,5 @@ cbuffer TransformBuffer : register(b0)
 	float4x4 Proj  : packoffset(c8);
 };
 
+Texture2D ColorTexture : register(t0);
+SamplerState ColorSampler : register(s0);

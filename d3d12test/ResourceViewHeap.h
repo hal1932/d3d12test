@@ -5,6 +5,7 @@
 class Device;
 class ScreenContext;
 class Resource;
+class Texture;
 
 struct HeapDesc
 {
@@ -12,7 +13,7 @@ struct HeapDesc
 	{
 		RenderTargetView,
 		DepthStencilView,
-		ConstantBufferView,
+		CbSrUaView, // ConstantBuffer/ShaderResource/UnorderedAccess View
 	} ViewType;
 	int BufferCount;
 };
@@ -51,6 +52,7 @@ public:
 	HRESULT CreateRenderTargetViewFromBackBuffer(ScreenContext* pScreen);
 	HRESULT CreateDepthStencilView(ScreenContext* pContext, const DsvDesc& desc);
 	HRESULT CreateConstantBufferView(const CsvDesc& desc);
+	HRESULT CreateShaderResourceView(const Texture* pTexture);
 
 private:
 	Device* pDevice_;

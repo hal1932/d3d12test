@@ -49,7 +49,7 @@ HRESULT ResourceViewHeap::CreateHeap(Device* pDevice, const HeapDesc& desc)
 		case HeapDesc::ViewType::DepthStencilView:
 			return CreateHeapImpl_(pDevice, desc, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE);
 
-		case HeapDesc::ViewType::ConstantBufferView:
+		case HeapDesc::ViewType::CbSrUaView:
 			return CreateHeapImpl_(pDevice, desc, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE);
 
 		default:
