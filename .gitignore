@@ -56,3 +56,4 @@ Temporary Items
 *.pdb
 Debug
 Release
+*.swatch

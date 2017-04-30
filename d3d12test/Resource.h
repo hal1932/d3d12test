@@ -69,7 +69,7 @@ class Resource
 {
 public:
 	Resource();
-	Resource(ID3D12Resource* pResource) : pResource_(pResource) {}
+	Resource(ID3D12Resource* pResource);
 	~Resource();
 
 	ID3D12Resource* NativePtr() { return pResource_; }

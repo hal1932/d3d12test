@@ -6,6 +6,27 @@ Resource::Resource()
 	: pResource_(nullptr)
 {}
 
+Resource::Resource(ID3D12Resource* pResource)
+	: pResource_(pResource)
+{
+	D3D12_HEAP_PROPERTIES heapProp;
+	D3D12_HEAP_FLAGS heapFlags;
+	pResource->GetHeapProperties(&heapProp, &heapFlags);
+
+	const auto& desc = pResource->GetDesc();
+
+	desc_.HeapType = heapProp.Type;
+	desc_.Format = desc.Format;
+	desc_.Dimension = desc.Dimension;
+	desc_.Width = static_cast<int>(desc.Width);
+	desc_.Height = desc.Height;
+	desc_.Depth = desc.DepthOrArraySize;
+	desc_.MipLevels = desc.MipLevels;
+	desc_.SampleCount = desc.SampleDesc.Count;
+	desc_.Layout = desc.Layout;
+	desc_.Flags = desc.Flags;
+}
+
 Resource::~Resource()
 {
 	SafeRelease(&pResource_);

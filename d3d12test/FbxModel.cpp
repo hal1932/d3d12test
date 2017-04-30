@@ -2,6 +2,7 @@
 #include "common.h"
 #include "Device.h"
 #include "Resource.h"
+#include "Texture.h"
 #include <iostream>
 #include <vector>
 
@@ -291,6 +292,13 @@ void FbxModel::UpdateMaterialResources_(FbxGeometry* pGeom, Device* pDevice)
 				if (pTexture)
 				{
 					std::cout << pTexture->GetName() << " " << prop.GetName() << " " << pTexture->GetFileName() << std::endl;
+
+					wchar_t path[256];
+					size_t n;
+					mbstowcs_s(&n, path, pTexture->GetFileName(), 256);
+
+					Texture tex;
+					tex.LoadFromFile(path);
 				}
 			}
 		}

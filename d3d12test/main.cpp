@@ -26,6 +26,7 @@
 #include "Resource.h"
 #include "Shader.h"
 #include "FbxModel.h"
+#include "PngImage.h"
 
 #pragma comment(lib, "D3d12.lib")
 #pragma comment(lib, "dxgi.lib")
