@@ -2,6 +2,7 @@
 #include "common.h"
 #include "Device.h"
 #include "GpuFence.h"
+#include "CommandList.h"
 
 CommandQueue::CommandQueue()
 	: pCommandQueue_(nullptr),
@@ -39,15 +40,10 @@ HRESULT CommandQueue::Create(Device* pDevice)
 	return result;
 }
 
-void CommandQueue::SubmitSingleList(ID3D12CommandList* pCommandList)
+void CommandQueue::Submit(CommandList* pCommandList)
 {
-	ID3D12CommandList* ppCmdLists[] = { pCommandList };
+	ID3D12CommandList* ppCmdLists[] = { pCommandList->AsGraphicsList() };
 	pCommandQueue_->ExecuteCommandLists(1, ppCmdLists);
-}
-
-void CommandQueue::SubmitMultipleLists(int count, ID3D12CommandList* pCommandLists[])
-{
-	pCommandQueue_->ExecuteCommandLists(count, pCommandLists);
 }
 
 HRESULT CommandQueue::WaitForExecution()

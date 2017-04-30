@@ -3,6 +3,9 @@
 #include <memory>
 
 class Device;
+class CommandList;
+class CommandQueue;
+class GpuFence;
 
 struct ResourceDesc
 {
@@ -69,7 +72,7 @@ class Resource
 {
 public:
 	Resource();
-	Resource(ID3D12Resource* pResource);
+	Resource(ID3D12Resource* pResource, Device* pDevice);
 	~Resource();
 
 	ID3D12Resource* NativePtr() { return pResource_; }
@@ -77,61 +80,28 @@ public:
 	HRESULT CreateCommited(Device* pDevice, const ResourceDesc& desc);
 	HRESULT CreateCommited(Device* pDevice, const ResourceDesc& desc, const D3D12_CLEAR_VALUE& clearValue);
 
-	HRESULT CreateVertexBuffer(Device* pDevice, int size)
-	{
-		ResourceDesc desc = {};
-		desc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
-		desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		desc.Width = size;
-		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		desc.States = D3D12_RESOURCE_STATE_GENERIC_READ;
+	HRESULT CreateVertexBuffer(Device* pDevice, int size);
+	HRESULT CreateIndexBuffer(Device* pDevice, int size);
 
-		return CreateCommited(pDevice, desc);
-	}
+	void* Map(int subresource);
+	void Unmap(int subresource);
 
-	HRESULT CreateIndexBuffer(Device* pDevice, int size)
-	{
-		return CreateVertexBuffer(pDevice, size);
-	}
+	MappedResource ScopedMap(int subresource);
 
-	void* Map(int subresource)
-	{
-		void* pData;
-		auto result = pResource_->Map(subresource, nullptr, &pData);
-		return (SUCCEEDED(result)) ? pData : nullptr;
-	}
+	HRESULT UpdateSubresource(const D3D12_SUBRESOURCE_DATA* pData, CommandList* pCommandList, CommandQueue* pCommandQueue, int subresource);
+	HRESULT UpdateSubresources(const D3D12_SUBRESOURCE_DATA* pData, CommandList* pCommandList, CommandQueue* pCommandQueue, int firstSubresource, int subresourceCount);
 
-	void Unmap(int subresource) { pResource_->Unmap(subresource, nullptr); }
-
-	MappedResource ScopedMap(int subresource)
-	{
-		return MappedResource().Map(pResource_, subresource);
-	}
-
-	D3D12_VERTEX_BUFFER_VIEW GetVertexBufferView(int stride)
-	{
-		return
-		{
-			pResource_->GetGPUVirtualAddress(),
-			static_cast<UINT>(desc_.Width),
-			static_cast<UINT>(stride)
-		};
-	}
-
-	D3D12_INDEX_BUFFER_VIEW GetIndexBufferView(DXGI_FORMAT format)
-	{
-		return
-		{
-			pResource_->GetGPUVirtualAddress(),
-			static_cast<UINT>(desc_.Width),
-			format
-		};
-	}
+	D3D12_VERTEX_BUFFER_VIEW GetVertexBufferView(int stride);
+	D3D12_INDEX_BUFFER_VIEW GetIndexBufferView(DXGI_FORMAT format);
 
 private:
+	Device* pDevice_;
 	ID3D12Resource* pResource_;
 	ResourceDesc desc_;
 
 	HRESULT CreateCommitedImpl_(Device* pDevice, const ResourceDesc& desc, const D3D12_CLEAR_VALUE* pClearValue);
+	UINT64 GetSubresourcesFootprint_(int start, int count);
+	HRESULT UpdateSubresourcesImpl_(const D3D12_SUBRESOURCE_DATA* pData, CommandList* pCommandList, ID3D12Resource* pIntermediate, UINT64 offset, UINT start, UINT count);
+	HRESULT UpdateSubresourcesImpl_(const D3D12_SUBRESOURCE_DATA* pData, CommandList* pCommandList, ID3D12Resource* pIntermediate, UINT start, UINT count, UINT64 requiredSize, D3D12_PLACED_SUBRESOURCE_FOOTPRINT* pLayouts, UINT* pRowCounts, UINT64* pRowSizesInBytes);
+	void CopySubresource_(const D3D12_MEMCPY_DEST* pDest, const D3D12_SUBRESOURCE_DATA* pData, UINT64 rowSizeInBytes, UINT rowCount, UINT sliceCount);
 };
-

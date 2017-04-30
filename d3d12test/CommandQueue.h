@@ -3,6 +3,7 @@
 
 class Device;
 class GpuFence;
+class CommandList;
 
 class CommandQueue
 {
@@ -14,8 +15,7 @@ public:
 
 	HRESULT Create(Device* pDevice);
 
-	void SubmitSingleList(ID3D12CommandList* pCommandList);
-	void SubmitMultipleLists(int count, ID3D12CommandList* pCommandLists[]);
+	void Submit(CommandList* pCommandList);
 
 	HRESULT WaitForExecution();
 

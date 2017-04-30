@@ -8,6 +8,16 @@ Device::Device()
 
 Device::~Device()
 {
+	if (IsDebugEnabled())
+	{
+		ID3D12DebugDevice* debugInterface;
+		if (SUCCEEDED(pDevice_->QueryInterface(&debugInterface)))
+		{
+			debugInterface->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL | D3D12_RLDO_IGNORE_INTERNAL);
+			debugInterface->Release();
+		}
+	}
+
 	SafeRelease(&pDevice_);
 	SafeRelease(&pDebug_);
 }

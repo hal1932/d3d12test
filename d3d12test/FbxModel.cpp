@@ -41,10 +41,12 @@ FbxModel::FbxModel()
 
 FbxModel::~FbxModel()
 {
-	SafeDestroy(&pScene_);
+	SafeDelete(&pTexture_);
 
 	SafeDelete(&pIndexBuffer_);
 	SafeDelete(&pVertexBuffer_);
+
+	SafeDestroy(&pScene_);
 }
 
 
@@ -297,10 +299,16 @@ void FbxModel::UpdateMaterialResources_(FbxGeometry* pGeom, Device* pDevice)
 					size_t n;
 					mbstowcs_s(&n, path, pTexture->GetFileName(), 256);
 
-					Texture tex;
-					tex.LoadFromFile(path);
+					pTexture_ = new Texture();
+					pTexture_->LoadFromFile(path);
+					pTexture_->UpdateResources(pDevice);
 				}
 			}
 		}
 	}
+}
+
+HRESULT FbxModel::UpdateSubresources(CommandList* pCommandList, CommandQueue* pCommandQueue)
+{
+	return pTexture_->UpdateSubresource(pCommandList, pCommandQueue);
 }

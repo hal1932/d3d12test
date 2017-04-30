@@ -31,16 +31,15 @@ HRESULT CommandList::Create(Device* pDevice)
 	return result;
 }
 
-void CommandList::Open(ID3D12PipelineState* pPipelineState)
+HRESULT CommandList::Open(ID3D12PipelineState* pPipelineState)
 {
 	switch (pParent_->Type())
 	{
 	case CommandContainer::SubmitType::Direct:
-		static_cast<ID3D12GraphicsCommandList*>(pNativeList_)->Reset(pParent_->NativePtr(), pPipelineState);
-		break;
+		return AsGraphicsList()->Reset(pParent_->NativePtr(), pPipelineState);
 
 	default:
-		break;
+		return S_FALSE;
 	}
 }
 

@@ -10,7 +10,16 @@ public:
 	ID3D12Device* NativePtr() { return pDevice_; }
 
 	bool IsDebugEnabled() { return (pDebug_ != nullptr); }
-	
+	void ReportLiveObjects()
+	{
+		ID3D12DebugDevice* debugInterface;
+		if (SUCCEEDED(pDevice_->QueryInterface(&debugInterface)))
+		{
+			debugInterface->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL | D3D12_RLDO_IGNORE_INTERNAL);
+			debugInterface->Release();
+		}
+	}
+
 	HRESULT EnableDebugLayer();
 	void Create();
 

@@ -11,6 +11,9 @@
 
 class Device;
 class Resource;
+class CommandList;
+class CommandQueue;
+class Texture;
 
 class FbxModel
 {
@@ -37,6 +40,7 @@ public:
 
 	HRESULT LoadFromFile(const char* filepath);
 	HRESULT UpdateResources(Device* pDevice);
+	HRESULT UpdateSubresources(CommandList* pCommandList, CommandQueue* pCommandQueue);
 
 private:
 	static FbxManager* spFbxManager_;
@@ -46,10 +50,12 @@ private:
 	const char* pName_ = nullptr;
 
 	Resource* pVertexBuffer_ = nullptr;
-	int vertexCount_;
+	int vertexCount_ = 0;
 
 	Resource* pIndexBuffer_ = nullptr;
-	int indexCount_;
+	int indexCount_ = 0;
+
+	Texture* pTexture_ = nullptr;
 
 	HRESULT UpdateResourcesRec_(FbxNode* pNode, Device* pDevice);
 	void UpdateMeshResources_(FbxMesh* pMesh, Device* pDevice);

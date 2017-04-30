@@ -76,7 +76,7 @@ HRESULT ResourceViewHeap::CreateRenderTargetViewFromBackBuffer(ScreenContext* pS
 		{
 			return result;
 		}
-		resourcePtrs_.push_back(new Resource(pView));
+		resourcePtrs_.push_back(new Resource(pView, pDevice_));
 
 		pNativeDevice->CreateRenderTargetView(pView, &viewDesc, handle);
 		handle.ptr += descriptorSize_;

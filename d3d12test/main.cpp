@@ -26,7 +26,6 @@
 #include "Resource.h"
 #include "Shader.h"
 #include "FbxModel.h"
-#include "PngImage.h"
 
 #pragma comment(lib, "D3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -138,6 +137,7 @@ bool SetupScene()
 	scene.pModel = new FbxModel();
 	scene.pModel->LoadFromFile("assets/test_a.fbx");
 	scene.pModel->UpdateResources(&gfx.device);
+	scene.pModel->UpdateSubresources(gfx.pCommandList, &gfx.commandQueue);
 	
 	scene.cbvHeap.CreateHeap(&gfx.device, { HeapDesc::ViewType::ConstantBufferView, 1 });
 	scene.cbvHeap.CreateConstantBufferView({ sizeof(scene.transformBuffer), D3D12_TEXTURE_LAYOUT_ROW_MAJOR });
@@ -304,7 +304,7 @@ void Draw()
 
 	gfx.pCommandList->Close();
 
-	gfx.commandQueue.SubmitSingleList(pCmdList);
+	gfx.commandQueue.Submit(gfx.pCommandList);
 
 	gfx.screen.SwapBuffers();
 
