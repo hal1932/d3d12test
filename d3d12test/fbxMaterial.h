@@ -15,6 +15,8 @@ namespace fbx
 		Material();
 		~Material();
 
+		Texture* TexturePtr() { return pTexture_; }
+
 		HRESULT UpdateResources(FbxGeometry* pGeom, Device* pDevice);
 		HRESULT UpdateSubresources(CommandList* pCommandList, CommandQueue* pCommandQueue);
 

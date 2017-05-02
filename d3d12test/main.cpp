@@ -144,6 +144,9 @@ bool SetupScene()
 	scene.cbSrUavHeap.CreateHeap(&gfx.device, { HeapDesc::ViewType::CbSrUaView, 2 });
 	scene.cbSrUavHeap.CreateConstantBufferView({ sizeof(scene.transformBuffer), D3D12_TEXTURE_LAYOUT_ROW_MAJOR });
 
+	// ↓これのリソースが二重解放でエラーになる
+	scene.cbSrUavHeap.CreateShaderResourceView({ D3D12_SRV_DIMENSION_TEXTURE2D, { scene.pModel->MeshPtr(0)->MaterialPtr()->TexturePtr() } });
+
 	{
 		scene.pCbvData = scene.cbSrUavHeap.ResourcePtr(0)->Map(0);
 
@@ -155,28 +158,51 @@ bool SetupScene()
 	}
 
 	{
-		D3D12_DESCRIPTOR_RANGE range = {};
-		range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-		range.NumDescriptors = 1;
-		range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+		D3D12_DESCRIPTOR_RANGE range[2];
+		range[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+		range[0].NumDescriptors = 1;
+		range[0].BaseShaderRegister = 0;
+		range[0].RegisterSpace = 0;
+		range[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-		D3D12_ROOT_PARAMETER param = {};
-		param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		param.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-		param.DescriptorTable.NumDescriptorRanges = 1;
-		param.DescriptorTable.pDescriptorRanges = &range;
+		range[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		range[1].NumDescriptors = 1;
+		range[1].BaseShaderRegister = 0;
+		range[1].RegisterSpace = 0;
+		range[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+		D3D12_ROOT_PARAMETER param[2];
+		param[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		param[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+		param[0].DescriptorTable.NumDescriptorRanges = 1;
+		param[0].DescriptorTable.pDescriptorRanges = &range[0];
+
+		param[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		param[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+		param[1].DescriptorTable.NumDescriptorRanges = 1;
+		param[1].DescriptorTable.pDescriptorRanges = &range[1];
+
+		D3D12_STATIC_SAMPLER_DESC sampler = {};
+		sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+		sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+		sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
+		sampler.MinLOD = 0.0f;
+		sampler.MaxLOD = D3D12_FLOAT32_MAX;
+		sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 		D3D12_ROOT_SIGNATURE_DESC desc = {};
-		desc.NumParameters = 1;
-		desc.pParameters = &param;
-		desc.NumStaticSamplers = 0;
-		desc.pStaticSamplers = nullptr;
+		desc.NumParameters = _countof(param);
+		desc.pParameters = param;
+		desc.NumStaticSamplers = 1;
+		desc.pStaticSamplers = &sampler;
 		desc.Flags =
 			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT
 			| D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS
 			| D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS
-			| D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS
-			| D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
+			| D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
 
 		ComPtr<ID3DBlob> pSignature;
 		ComPtr<ID3DBlob> pError;
@@ -222,7 +248,9 @@ bool SetupScene()
 		desc.PS = ps.NativeByteCode();
 		desc.RasterizerState = descRS;
 		desc.BlendState = descBS;
-		desc.DepthStencilState.DepthEnable = FALSE;
+		desc.DepthStencilState.DepthEnable = TRUE;
+		desc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+		desc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
 		desc.DepthStencilState.StencilEnable = FALSE;
 		desc.SampleMask = UINT_MAX;
 		desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
@@ -266,6 +294,7 @@ void Draw()
 		pCmdList->SetGraphicsRootSignature(scene.pRootSignature.Get());
 
 		pCmdList->SetGraphicsRootDescriptorTable(0, scene.cbSrUavHeap.GpuHandle(0));
+		pCmdList->SetGraphicsRootDescriptorTable(1, scene.cbSrUavHeap.GpuHandle(1));
 	}
 
 	scene.viewport = { 0.0f, 0.0f, (float)cScreenWidth, (float)cScreenHeight, 0.0f, 1.0f };

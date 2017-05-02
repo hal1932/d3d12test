@@ -33,6 +33,15 @@ struct CsvDesc
 	D3D12_TEXTURE_LAYOUT Layout;
 };
 
+struct SrvDesc
+{
+	D3D12_SRV_DIMENSION Dimension;
+	union
+	{
+		Texture* pTexture;
+	};
+};
+
 class ResourceViewHeap
 {
 public:
@@ -52,12 +61,12 @@ public:
 	HRESULT CreateRenderTargetViewFromBackBuffer(ScreenContext* pScreen);
 	HRESULT CreateDepthStencilView(ScreenContext* pContext, const DsvDesc& desc);
 	HRESULT CreateConstantBufferView(const CsvDesc& desc);
-	HRESULT CreateShaderResourceView(const Texture* pTexture);
+	HRESULT CreateShaderResourceView(const SrvDesc& desc);
 
 private:
 	Device* pDevice_;
 
-	ID3D12DescriptorHeap *pDescriptorHeap_;
+	ID3D12DescriptorHeap* pDescriptorHeap_;
 	UINT descriptorSize_;
 	UINT resourceCount_;
 	std::vector<Resource*> resourcePtrs_;

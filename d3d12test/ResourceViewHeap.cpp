@@ -3,6 +3,7 @@
 #include "Device.h"
 #include "ScreenContext.h"
 #include "Resource.h"
+#include "Texture.h"
 
 ResourceViewHeap::ResourceViewHeap()
 	: pDevice_(nullptr),
@@ -67,8 +68,9 @@ HRESULT ResourceViewHeap::CreateRenderTargetViewFromBackBuffer(ScreenContext* pS
 
 	auto pNativeDevice = pDevice_->NativePtr();
 
-	auto handle = CpuHandle(static_cast<int>(resourcePtrs_.size()));
-	for (UINT i = 0; i < resourceCount_; ++i)
+	const auto handleOffset = static_cast<int>(resourcePtrs_.size());
+	auto handle = CpuHandle(handleOffset);
+	for (int i = handleOffset; i < pScreen->Desc().BufferCount; ++i)
 	{
 		ID3D12Resource* pView;
 		result = pScreen->GetBackBufferView(i, &pView);
@@ -153,6 +155,42 @@ HRESULT ResourceViewHeap::CreateConstantBufferView(const CsvDesc& desc)
 	resourcePtrs_.push_back(pResource);
 
 	return result;
+}
+
+HRESULT ResourceViewHeap::CreateShaderResourceView(const SrvDesc& desc)
+{
+	D3D12_SHADER_RESOURCE_VIEW_DESC viewDesc = {};
+	viewDesc.ViewDimension = desc.Dimension;
+
+	Resource* pResource = nullptr;
+
+	switch (desc.Dimension)
+	{
+		case D3D12_SRV_DIMENSION_TEXTURE2D:
+		{
+			const auto texDesc = desc.pTexture->ResourcePtr()->NativePtr()->GetDesc();
+
+			// ‚Æ‚è‚ ‚¦‚¸RGBA‚ðŽw’è‚µ‚Ä‚¨‚­
+			viewDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+			viewDesc.Format = texDesc.Format;
+			viewDesc.Texture2D.MipLevels = texDesc.MipLevels;
+			viewDesc.Texture1D.MostDetailedMip = 0;
+
+			pResource = desc.pTexture->ResourcePtr();
+
+			break;
+		}
+	}
+
+	auto pNativeDevice = pDevice_->NativePtr();
+
+	auto handle = CpuHandle(static_cast<int>(resourcePtrs_.size()));
+	pNativeDevice->CreateShaderResourceView(pResource->NativePtr(), &viewDesc, handle);
+
+	resourcePtrs_.push_back(pResource);
+
+	return S_OK;
 }
 
 HRESULT ResourceViewHeap::CreateHeapImpl_(
