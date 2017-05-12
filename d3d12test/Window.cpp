@@ -154,6 +154,23 @@ void Window::SetEventHandler(WindowEvent ev, std::function<void(WindowEventArg*)
 	eventHandlers_[ev] = handler;
 }
 
+void Window::MessageLoop(std::function<void()> onIdle)
+{
+	MSG msg = {};
+	while (msg.message != WM_QUIT)
+	{
+		auto nextMsg = PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE);
+		if (nextMsg)
+		{
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+		else
+		{
+			onIdle();
+		}
+	}
+}
 LRESULT Window::WindowProc_(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	switch (msg)

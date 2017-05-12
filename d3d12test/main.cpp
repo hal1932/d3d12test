@@ -387,22 +387,10 @@ int MainImpl(int, char**)
 	SetupGraphics(window.Handle());
 	SetupScene();
 
+	window.MessageLoop([]()
 	{
-		MSG msg = {};
-		while (msg.message != WM_QUIT)
-		{
-			auto nextMsg = PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE);
-			if (nextMsg)
-			{
-				TranslateMessage(&msg);
-				DispatchMessage(&msg);
-			}
-			else
-			{
-				Draw();
-			}
-		}
-	}
+		Draw();
+	});
 
 	ShutdownScene();
 	ShutdownGraphics();

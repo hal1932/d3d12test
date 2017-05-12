@@ -17,6 +17,7 @@ public:
 	HRESULT Close();
 
 	void SetEventHandler(WindowEvent ev, std::function<void(WindowEventArg*)> handler);
+	void MessageLoop(std::function<void()> onIdle);
 
 public:
 	const HWND Handle() { return handle_; }
