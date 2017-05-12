@@ -32,7 +32,6 @@ HRESULT Mesh::UpdateSubresources(CommandList* pCommandList, CommandQueue* pComma
 	return pMaterial_->UpdateSubresources(pCommandList, pCommandQueue);
 }
 
-
 void Mesh::UpdateVertexResources_(FbxMesh* pMesh, Device* pDevice)
 {
 	SafeDelete(&pVertexBuffer_);
