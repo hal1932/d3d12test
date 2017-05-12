@@ -48,7 +48,10 @@ struct Graphics
 	ScreenContext screen;
 
 	ResourceViewHeap renderTargetViewHeap;
+	std::vector<Resource*> renderTargetViewPrts;
+
 	ResourceViewHeap depthStencilViewHeap;
+	Resource* pDepthStencilView;
 
 	CommandQueue commandQueue;
 
@@ -78,10 +81,10 @@ bool SetupGraphics(HWND hWnd)
 	}
 
 	gfx.renderTargetViewHeap.CreateHeap(&gfx.device, { HeapDesc::ViewType::RenderTargetView, 2 });
-	gfx.renderTargetViewHeap.CreateRenderTargetViewFromBackBuffer(&gfx.screen);
+	gfx.renderTargetViewPrts = gfx.renderTargetViewHeap.CreateRenderTargetViewFromBackBuffer(&gfx.screen);
 
 	gfx.depthStencilViewHeap.CreateHeap(&gfx.device, { HeapDesc::ViewType::DepthStencilView, 1 });
-	gfx.depthStencilViewHeap.CreateDepthStencilView(
+	gfx.pDepthStencilView = gfx.depthStencilViewHeap.CreateDepthStencilView(
 		&gfx.screen,
 		{ cScreenWidth, cScreenHeight, DXGI_FORMAT_D24_UNORM_S8_UINT, 1.0f, 0 });
 
@@ -125,6 +128,8 @@ struct Scene
 
 	TransformBuffer transformBuffer;
 	ResourceViewHeap cbSrUavHeap;
+	Resource* pTransformCbv;
+	Resource* pTextureSrv;
 	void* pCbvData;
 
 	D3D12_VIEWPORT viewport;
@@ -142,13 +147,12 @@ bool SetupScene()
 	scene.pModel->UpdateSubresources(gfx.pCommandList, &gfx.commandQueue);
 	
 	scene.cbSrUavHeap.CreateHeap(&gfx.device, { HeapDesc::ViewType::CbSrUaView, 2 });
-	scene.cbSrUavHeap.CreateConstantBufferView({ sizeof(scene.transformBuffer), D3D12_TEXTURE_LAYOUT_ROW_MAJOR });
-
-	// ↓これのリソースが二重解放でエラーになる
-	scene.cbSrUavHeap.CreateShaderResourceView({ D3D12_SRV_DIMENSION_TEXTURE2D, { scene.pModel->MeshPtr(0)->MaterialPtr()->TexturePtr() } });
+	scene.pTransformCbv = scene.cbSrUavHeap.CreateConstantBufferView({ sizeof(scene.transformBuffer), D3D12_TEXTURE_LAYOUT_ROW_MAJOR });
 
 	{
-		scene.pCbvData = scene.cbSrUavHeap.ResourcePtr(0)->Map(0);
+		scene.pTextureSrv = scene.cbSrUavHeap.CreateShaderResourceView({ D3D12_SRV_DIMENSION_TEXTURE2D,{ scene.pModel->MeshPtr(0)->MaterialPtr()->TexturePtr() } });
+
+		scene.pCbvData = scene.pTransformCbv->Map(0);
 
 		scene.transformBuffer.World = DirectX::XMMatrixIdentity();
 		scene.transformBuffer.View = DirectX::XMMatrixLookAtLH({ 0.0f, 0.0f, 5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
@@ -305,7 +309,7 @@ void Draw()
 
 	D3D12_RESOURCE_BARRIER barrier = {};
 	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	barrier.Transition.pResource = gfx.renderTargetViewHeap.NativeResourcePtr(gfx.screen.FrameIndex());
+	barrier.Transition.pResource = gfx.renderTargetViewPrts[gfx.screen.FrameIndex()]->NativePtr();
 	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
 	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	pCmdList->ResourceBarrier(1, &barrier);
@@ -346,13 +350,19 @@ void Draw()
 void ShutdownScene()
 {
 	SafeDelete(&scene.pModel);
-	scene.cbSrUavHeap.ResourcePtr(0)->Unmap(0);
+	scene.pTransformCbv->Unmap(0);
+	SafeDelete(&scene.pTransformCbv);
 	scene.pPipelineState.Reset();
 	scene.pRootSignature.Reset();
 }
 
 void ShutdownGraphics()
 {
+	SafeDelete(&gfx.pDepthStencilView);
+	for (auto pResource : gfx.renderTargetViewPrts)
+	{
+		SafeDelete(&pResource);
+	}
 	WaitForCommandExecution();
 }
 

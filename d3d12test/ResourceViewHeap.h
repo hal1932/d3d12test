@@ -45,31 +45,28 @@ struct SrvDesc
 class ResourceViewHeap
 {
 public:
-	ResourceViewHeap();
+	ResourceViewHeap() {}
 	~ResourceViewHeap();
 
 	ID3D12DescriptorHeap* NativePtr() { return pDescriptorHeap_; }
-
-	Resource* ResourcePtr(int index) { return resourcePtrs_[index]; }
-	ID3D12Resource* NativeResourcePtr(int index);
 
 	D3D12_CPU_DESCRIPTOR_HANDLE CpuHandle(int index);
 	D3D12_GPU_DESCRIPTOR_HANDLE GpuHandle(int index);
 
 	HRESULT CreateHeap(Device* pDevice, const HeapDesc& desc);
 
-	HRESULT CreateRenderTargetViewFromBackBuffer(ScreenContext* pScreen);
-	HRESULT CreateDepthStencilView(ScreenContext* pContext, const DsvDesc& desc);
-	HRESULT CreateConstantBufferView(const CsvDesc& desc);
-	HRESULT CreateShaderResourceView(const SrvDesc& desc);
+	std::vector<Resource*> CreateRenderTargetViewFromBackBuffer(ScreenContext* pScreen);
+	Resource* CreateDepthStencilView(ScreenContext* pContext, const DsvDesc& desc);
+	Resource* CreateConstantBufferView(const CsvDesc& desc);
+	Resource* CreateShaderResourceView(const SrvDesc& desc);
 
 private:
 	Device* pDevice_;
 
-	ID3D12DescriptorHeap* pDescriptorHeap_;
-	UINT descriptorSize_;
-	UINT resourceCount_;
-	std::vector<Resource*> resourcePtrs_;
+	ID3D12DescriptorHeap* pDescriptorHeap_ = nullptr;
+	UINT descriptorSize_ = 0U;
+	UINT resourceCount_ = 0U;
+	int currentSize_ = 0;
 
 	HRESULT CreateHeapImpl_(
 		Device* pDevice,
