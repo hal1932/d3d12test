@@ -59,24 +59,24 @@ struct Graphics
 
 	CommandContainer commandContainer;
 	CommandList* pCommandList;
-
-	D3D12_VIEWPORT viewPort;
-	D3D12_RECT scissorRect;
 };
 Graphics gfx;
 
-bool SetupGraphics(HWND hWnd)
+void ResizeScreen(HWND hWnd, int width, int height)
 {
-	gfx.device.EnableDebugLayer();
-	gfx.device.Create();
+	gfx.depthStencilViewPtr.reset();
+	gfx.depthStencilViewHeap.Reset();
 
-	gfx.commandQueue.Create(&gfx.device);
+	gfx.renderTargetViewPtrs.clear();
+	gfx.renderTargetViewHeap.Reset();
+
+	gfx.screen.Reset();
 
 	{
 		ScreenContextDesc desc;
 		desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-		desc.Width = cScreenWidth;
-		desc.Height = cScreenHeight;
+		desc.Width = width;
+		desc.Height = height;
 		desc.OutputWindow = hWnd;
 
 		gfx.screen.Create(&gfx.device, &gfx.commandQueue, desc);
@@ -93,27 +93,23 @@ bool SetupGraphics(HWND hWnd)
 	gfx.depthStencilViewHeap.CreateHeap(&gfx.device, { HeapDesc::ViewType::DepthStencilView, 1 });
 	gfx.depthStencilViewPtr = std::unique_ptr<Resource>(gfx.depthStencilViewHeap.CreateDepthStencilView(
 		&gfx.screen,
-		{ cScreenWidth, cScreenHeight, DXGI_FORMAT_D24_UNORM_S8_UINT, 1.0f, 0 }));
+		{ width, height, DXGI_FORMAT_D24_UNORM_S8_UINT, 1.0f, 0 }));
+}
+
+bool SetupGraphics(HWND hWnd)
+{
+	gfx.device.EnableDebugLayer();
+	gfx.device.Create();
+
+	gfx.commandQueue.Create(&gfx.device);
+
+	ResizeScreen(hWnd, cScreenWidth, cScreenHeight);
 
 	gfx.commandContainer.Create(&gfx.device);
 
 	gfx.pCommandList = gfx.commandContainer.AddGraphicsList();
 	gfx.pCommandList->Close();
 	
-	{
-		gfx.viewPort = {};
-		gfx.viewPort.Width = (FLOAT)cScreenWidth;
-		gfx.viewPort.Height = (FLOAT)cScreenHeight;
-		gfx.viewPort.MinDepth = 0.0f;
-		gfx.viewPort.MaxDepth = 1.0f;
-	}
-
-	{
-		gfx.scissorRect = {};
-		gfx.scissorRect.right = cScreenWidth;
-		gfx.scissorRect.bottom = cScreenHeight;
-	}
-
 	return true;
 }
 
@@ -159,14 +155,7 @@ bool SetupScene()
 
 	{
 		scene.pTextureSrv = scene.cbSrUavHeap.CreateShaderResourceView({ D3D12_SRV_DIMENSION_TEXTURE2D,{ scene.modelPtr->MeshPtr(0)->MaterialPtr()->TexturePtr() } });
-
 		scene.pCbvData = scene.transformCbvPtr->Map(0);
-
-		scene.transformBuffer.World = DirectX::XMMatrixIdentity();
-		scene.transformBuffer.View = DirectX::XMMatrixLookAtLH({ 0.0f, 0.0f, 5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
-		scene.transformBuffer.Proj = DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4, (float)cScreenWidth / (float)cScreenHeight, 1.0f, 1000.f);
-
-		memcpy(scene.pCbvData, &scene.transformBuffer, sizeof(scene.transformBuffer));
 	}
 
 	{
@@ -291,8 +280,13 @@ void Draw()
 {
 	scene.rotateAngle += 0.01f;
 
-	scene.transformBuffer.World = DirectX::XMMatrixRotationY(scene.rotateAngle);
-	memcpy(scene.pCbvData, &scene.transformBuffer, sizeof(scene.transformBuffer));
+	{
+		scene.transformBuffer.World = DirectX::XMMatrixRotationY(scene.rotateAngle);
+		scene.transformBuffer.View = DirectX::XMMatrixLookAtLH({ 0.0f, 0.0f, 5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
+		scene.transformBuffer.Proj = DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4, gfx.screen.AspectRatio(), 1.0f, 1000.f);
+
+		memcpy(scene.pCbvData, &scene.transformBuffer, sizeof(scene.transformBuffer));
+	}
 
 	gfx.commandContainer.ClearState();
 	gfx.pCommandList->Open(scene.pPipelineState.Get());
@@ -309,10 +303,10 @@ void Draw()
 		pCmdList->SetGraphicsRootDescriptorTable(1, scene.cbSrUavHeap.GpuHandle(1));
 	}
 
-	scene.viewport = { 0.0f, 0.0f, (float)cScreenWidth, (float)cScreenHeight, 0.0f, 1.0f };
+	scene.viewport = { 0.0f, 0.0f, (float)gfx.screen.Width(), (float)gfx.screen.Height(), 0.0f, 1.0f };
 	pCmdList->RSSetViewports(1, &scene.viewport);
 
-	scene.scissorRect = { 0, 0, cScreenWidth, cScreenHeight };
+	scene.scissorRect = { 0, 0, gfx.screen.Width(), gfx.screen.Height() };
 	pCmdList->RSSetScissorRects(1, &scene.scissorRect);
 
 	D3D12_RESOURCE_BARRIER barrier = {};
@@ -379,9 +373,12 @@ int MainImpl(int, char**)
 	window.Resize(1280, 720);
 	window.Open();
 
-	window.SetEventHandler(WindowEvent::Resize, [](auto e)
+	window.SetEventHandler(WindowEvent::Resize, [&window](auto e)
 	{
-		auto arg = static_cast<ResizeEventArg*>(e);
+		WaitForCommandExecution();
+
+		auto pArg = static_cast<ResizeEventArg*>(e);
+		ResizeScreen(window.Handle(), pArg->Width, pArg->Height);
 	});
 
 	SetupGraphics(window.Handle());

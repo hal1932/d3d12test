@@ -33,7 +33,13 @@ public:
 	UINT FrameIndex() { return frameIndex_; }
 	const ScreenContextDesc& Desc() { return desc_; }
 
+	const int Width() { return desc_.Width; }
+	const int Height() { return desc_.Height; }
+	const float AspectRatio() { return (float)Width() / (float)Height(); }
+
 	void Create(Device* pDevice, CommandQueue* pCommandQueue, const ScreenContextDesc& desc);
+	void Reset();
+
 	void UpdateFrameIndex();
 	void SwapBuffers();
 

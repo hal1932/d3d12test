@@ -64,6 +64,7 @@ void ScreenContext::Create(Device* pDevice, CommandQueue* pCommandQueue, const S
 void ScreenContext::Reset()
 {
 	SafeRelease(&pSwapChain_);
+	frameIndex_ = 0U;
 }
 
 void ScreenContext::UpdateFrameIndex()

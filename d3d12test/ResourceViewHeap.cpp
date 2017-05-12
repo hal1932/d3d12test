@@ -45,6 +45,9 @@ HRESULT ResourceViewHeap::CreateHeap(Device* pDevice, const HeapDesc& desc)
 void ResourceViewHeap::Reset()
 {
 	SafeRelease(&pDescriptorHeap_);
+	descriptorSize_ = 0U;
+	resourceCount_ = 0U;
+	currentSize_ = 0;
 }
 
 std::vector<Resource*> ResourceViewHeap::CreateRenderTargetViewFromBackBuffer(ScreenContext* pScreen)
