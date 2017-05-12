@@ -54,6 +54,7 @@ public:
 	D3D12_GPU_DESCRIPTOR_HANDLE GpuHandle(int index);
 
 	HRESULT CreateHeap(Device* pDevice, const HeapDesc& desc);
+	void Reset();
 
 	std::vector<Resource*> CreateRenderTargetViewFromBackBuffer(ScreenContext* pScreen);
 	Resource* CreateDepthStencilView(ScreenContext* pContext, const DsvDesc& desc);

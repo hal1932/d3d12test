@@ -7,7 +7,7 @@
 
 ResourceViewHeap::~ResourceViewHeap()
 {
-	SafeRelease(&pDescriptorHeap_);
+	Reset();
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE ResourceViewHeap::CpuHandle(int index)
@@ -40,6 +40,11 @@ HRESULT ResourceViewHeap::CreateHeap(Device* pDevice, const HeapDesc& desc)
 		default:
 			return S_FALSE;
 	}
+}
+
+void ResourceViewHeap::Reset()
+{
+	SafeRelease(&pDescriptorHeap_);
 }
 
 std::vector<Resource*> ResourceViewHeap::CreateRenderTargetViewFromBackBuffer(ScreenContext* pScreen)
