@@ -2,12 +2,6 @@
 #include "common.h"
 #include "Device.h"
 
-GpuFence::GpuFence()
-	: pFence_(nullptr),
-	fenceEvent_(nullptr),
-	fenceValue_(0ULL)
-{}
-
 GpuFence::~GpuFence()
 {
 	SafeCloseHandle(&fenceEvent_);

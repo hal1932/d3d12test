@@ -71,7 +71,7 @@ private:
 class Resource
 {
 public:
-	Resource();
+	Resource() {}
 	Resource(ID3D12Resource* pResource, Device* pDevice);
 	~Resource();
 
@@ -95,8 +95,8 @@ public:
 	D3D12_INDEX_BUFFER_VIEW GetIndexBufferView(DXGI_FORMAT format);
 
 private:
-	Device* pDevice_;
-	ID3D12Resource* pResource_;
+	Device* pDevice_ = nullptr;
+	ID3D12Resource* pResource_ = nullptr;
 	ResourceDesc desc_;
 
 	HRESULT CreateCommitedImpl_(Device* pDevice, const ResourceDesc& desc, const D3D12_CLEAR_VALUE* pClearValue);

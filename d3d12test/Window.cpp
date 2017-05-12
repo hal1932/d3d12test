@@ -14,11 +14,6 @@ namespace
 	}
 }
 
-Window::Window()
-	: handle_(nullptr)
-{}
-
-
 Window::~Window()
 {
 	Close();

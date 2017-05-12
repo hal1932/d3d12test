@@ -7,7 +7,6 @@
 class Window
 {
 public:
-	Window();
 	~Window();
 
 	HRESULT Setup(HINSTANCE hInstance, LPCTSTR title);
@@ -23,9 +22,9 @@ public:
 	const HWND Handle() { return handle_; }
 
 private:
-	HWND handle_;
-	HINSTANCE instanceHandle_;
-	LPCTSTR title_;
+	HWND handle_ = nullptr;
+	HINSTANCE instanceHandle_ = nullptr;
+	LPCTSTR title_ = nullptr;
 
 	std::map<WindowEvent, std::function<void(WindowEventArg*)>> eventHandlers_;
 

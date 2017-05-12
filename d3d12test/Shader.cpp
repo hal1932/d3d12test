@@ -12,11 +12,6 @@ namespace
 	DXGI_FORMAT GetElementFormat(const D3D12_SIGNATURE_PARAMETER_DESC& desc);
 }
 
-Shader::Shader()
-	: pBlob_(nullptr),
-	pInputLayout_(nullptr)
-{}
-
 Shader::~Shader()
 {
 	SafeDelete(&pInputLayout_);
@@ -69,11 +64,6 @@ HRESULT Shader::CreateInputLayout()
 	pInputLayout_ = new InputLayout();
 	return pInputLayout_->Create(pBlob_);
 }
-
-Shader::InputLayout::InputLayout()
-	: pElements_(nullptr),
-	pSemanticNames_(nullptr)
-{}
 
 Shader::InputLayout::~InputLayout()
 {

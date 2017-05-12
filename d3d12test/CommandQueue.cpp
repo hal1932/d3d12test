@@ -4,11 +4,6 @@
 #include "GpuFence.h"
 #include "CommandList.h"
 
-CommandQueue::CommandQueue()
-	: pCommandQueue_(nullptr),
-	pGpuFence_(nullptr)
-{}
-
 CommandQueue::~CommandQueue()
 {
 	SafeDelete(&pGpuFence_);

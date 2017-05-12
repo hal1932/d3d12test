@@ -26,7 +26,6 @@ struct CompiledShaderDesc
 class Shader
 {
 public:
-	Shader();
 	~Shader();
 
 	ID3DBlob* NativePtr() { return pBlob_; }
@@ -44,22 +43,21 @@ public:
 	HRESULT CreateInputLayout();
 
 private:
-	ID3DBlob* pBlob_;
+	ID3DBlob* pBlob_ = nullptr;
 
 	class InputLayout
 	{
 	public:
-		InputLayout();
 		~InputLayout();
 
 		D3D12_INPUT_LAYOUT_DESC NativeObj() { return{ pElements_, elementCount_ }; }
 		HRESULT Create(ID3DBlob *pBlob);
 
 	private:
-		D3D12_INPUT_ELEMENT_DESC* pElements_;
-		UINT elementCount_;
-		std::string* pSemanticNames_;
+		D3D12_INPUT_ELEMENT_DESC* pElements_ = nullptr;
+		UINT elementCount_ = 0U;
+		std::string* pSemanticNames_ = nullptr;
 	};
-	InputLayout* pInputLayout_;
+	InputLayout* pInputLayout_ = nullptr;
 };
 

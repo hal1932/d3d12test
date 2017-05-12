@@ -15,7 +15,6 @@ class CommandQueue;
 class Texture
 {
 public:
-	Texture();
 	~Texture();
 
 	Resource* ResourcePtr() { return pResource_; }
@@ -25,8 +24,8 @@ public:
 	HRESULT UpdateSubresource(CommandList* pCommandList, CommandQueue* pCommandQueue);
 
 private:
-	DirectX::TexMetadata* pData_;
+	DirectX::TexMetadata* pData_ = nullptr;
 	std::wstring filepath_;
-	Resource* pResource_;
+	Resource* pResource_ = nullptr;
 };
 

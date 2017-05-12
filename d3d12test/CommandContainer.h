@@ -15,7 +15,6 @@ public:
 	};
 
 public:
-	CommandContainer();
 	~CommandContainer();
 
 	ID3D12CommandAllocator* NativePtr() { return pCommandAllocator_; }
@@ -28,8 +27,8 @@ public:
 	void ClearState() { pCommandAllocator_->Reset(); }
 
 private:
-	Device* pDevice_;
-	ID3D12CommandAllocator* pCommandAllocator_;
+	Device* pDevice_ = nullptr;
+	ID3D12CommandAllocator* pCommandAllocator_ = nullptr;
 	SubmitType type_;
 	std::vector<CommandList*> itemPtrs_;
 };

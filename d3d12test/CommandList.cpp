@@ -4,8 +4,7 @@
 #include "CommandContainer.h"
 
 CommandList::CommandList(CommandContainer* pParent)
-	: pNativeList_(nullptr),
-	pParent_(pParent)
+	: pParent_(pParent)
 {}
 
 CommandList::~CommandList()

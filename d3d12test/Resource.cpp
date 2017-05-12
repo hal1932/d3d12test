@@ -6,11 +6,6 @@
 #include "GpuFence.h"
 #include <d3dx12.h>
 
-Resource::Resource()
-	: pDevice_(nullptr),
-	pResource_(nullptr)
-{}
-
 Resource::Resource(ID3D12Resource* pResource, Device* pDevice)
 	: pDevice_(pDevice),
 	pResource_(pResource)

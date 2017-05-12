@@ -6,11 +6,6 @@
 
 #pragma comment(lib, "DirectXTex.lib")
 
-Texture::Texture()
-	: pData_(nullptr),
-	pResource_(nullptr)
-{}
-
 Texture::~Texture()
 {
 	SafeDelete(&pResource_);

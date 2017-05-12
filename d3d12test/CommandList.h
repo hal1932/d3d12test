@@ -17,7 +17,7 @@ public:
 	void Close();
 
 private:
-	ID3D12CommandList* pNativeList_;
-	CommandContainer* pParent_;
+	ID3D12CommandList* pNativeList_ = nullptr;
+	CommandContainer* pParent_ = nullptr;
 };
 

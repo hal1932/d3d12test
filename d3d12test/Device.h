@@ -4,7 +4,6 @@
 class Device
 {
 public:
-	Device();
 	~Device();
 
 	ID3D12Device* NativePtr() { return pDevice_; }
@@ -24,7 +23,7 @@ public:
 	void Create();
 
 private:
-	ID3D12Device* pDevice_;
-	ID3D12Debug* pDebug_;
+	ID3D12Device* pDevice_ = nullptr;
+	ID3D12Debug* pDebug_ = nullptr;
 };
 

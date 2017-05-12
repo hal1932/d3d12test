@@ -27,7 +27,6 @@ struct ScreenContextDesc
 class ScreenContext
 {
 public:
-	ScreenContext();
 	~ScreenContext();
 
 	UINT FrameIndex() { return frameIndex_; }
@@ -47,11 +46,11 @@ public: // internal
 	HRESULT GetBackBufferView(UINT index, ID3D12Resource** ppView);
 
 private:
-	Device* pDevice_;
+	Device* pDevice_ = nullptr;
 
 	ScreenContextDesc desc_;
-	IDXGISwapChain3* pSwapChain_;
+	IDXGISwapChain3* pSwapChain_ = nullptr;
 	
-	UINT frameIndex_;
+	UINT frameIndex_ = 0U;
 };
 

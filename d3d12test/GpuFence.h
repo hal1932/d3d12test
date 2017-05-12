@@ -6,7 +6,6 @@ class Device;
 class GpuFence
 {
 public:
-	GpuFence();
 	~GpuFence();
 
 	ID3D12Fence* NativePtr() { return pFence_; }
@@ -17,8 +16,8 @@ public:
 	HRESULT WaitForCompletion();
 
 private:
-	ID3D12Fence* pFence_;
-	UINT64 fenceValue_;
-	HANDLE fenceEvent_;
+	ID3D12Fence* pFence_ = nullptr;
+	UINT64 fenceValue_ = 0ULL;
+	HANDLE fenceEvent_ = nullptr;
 };
 

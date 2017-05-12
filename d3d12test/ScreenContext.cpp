@@ -7,11 +7,6 @@
 
 using Microsoft::WRL::ComPtr;
 
-ScreenContext::ScreenContext()
-	: pSwapChain_(nullptr),
-	frameIndex_(0)
-{}
-
 ScreenContext::~ScreenContext()
 {
 	Reset();

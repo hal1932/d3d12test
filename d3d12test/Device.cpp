@@ -2,10 +2,6 @@
 #include "common.h"
 
 
-Device::Device()
-	: pDevice_(nullptr)
-{}
-
 Device::~Device()
 {
 	if (IsDebugEnabled())

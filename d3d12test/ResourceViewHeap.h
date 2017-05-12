@@ -45,7 +45,6 @@ struct SrvDesc
 class ResourceViewHeap
 {
 public:
-	ResourceViewHeap() {}
 	~ResourceViewHeap();
 
 	ID3D12DescriptorHeap* NativePtr() { return pDescriptorHeap_; }
@@ -62,7 +61,7 @@ public:
 	Resource* CreateShaderResourceView(const SrvDesc& desc);
 
 private:
-	Device* pDevice_;
+	Device* pDevice_ = nullptr;
 
 	ID3D12DescriptorHeap* pDescriptorHeap_ = nullptr;
 	UINT descriptorSize_ = 0U;

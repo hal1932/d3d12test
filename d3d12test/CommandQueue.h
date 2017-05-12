@@ -8,7 +8,6 @@ class CommandList;
 class CommandQueue
 {
 public:
-	CommandQueue();
 	~CommandQueue();
 
 	ID3D12CommandQueue* NativePtr() { return pCommandQueue_; }
@@ -20,7 +19,7 @@ public:
 	HRESULT WaitForExecution();
 
 private:
-	ID3D12CommandQueue* pCommandQueue_;
-	GpuFence* pGpuFence_;
+	ID3D12CommandQueue* pCommandQueue_ = nullptr;
+	GpuFence* pGpuFence_ = nullptr;
 };
 

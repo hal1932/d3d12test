@@ -3,10 +3,6 @@
 #include "Device.h"
 #include "CommandList.h"
 
-CommandContainer::CommandContainer()
-	: pCommandAllocator_(nullptr)
-{}
-
 CommandContainer::~CommandContainer()
 {
 	for (auto item : itemPtrs_)
