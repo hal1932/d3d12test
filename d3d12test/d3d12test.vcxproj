@@ -189,9 +189,6 @@
     <ClInclude Include="Window.h" />
     <ClInclude Include="WindowEvent.h" />
   </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="d3d12test.rc" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

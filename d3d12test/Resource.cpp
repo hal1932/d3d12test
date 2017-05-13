@@ -56,8 +56,8 @@ HRESULT Resource::CreateCommitedImpl_(Device* pDevice, const ResourceDesc& desc,
 	D3D12_RESOURCE_DESC resDesc = {};
 	resDesc.Dimension = desc.Dimension;
 	resDesc.Format = desc.Format;
-	resDesc.Width = static_cast<UINT64>(desc.Width);
-	resDesc.Height = static_cast<UINT64>(desc.Height);
+	resDesc.Width = desc.Width;
+	resDesc.Height = desc.Height;
 	resDesc.DepthOrArraySize = static_cast<UINT16>(desc.Depth);
 	resDesc.MipLevels = static_cast<UINT16>(desc.MipLevels);
 	resDesc.SampleDesc.Count = static_cast<UINT>(desc.SampleCount);

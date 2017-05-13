@@ -5,7 +5,7 @@
 #include "Resource.h"
 #include <Windows.h>
 
-int GetSubresourcesFootprint_(ID3D12Device* pDevice, int start, int count, const D3D12_RESOURCE_DESC& desc);
+UINT64 GetSubresourcesFootprint_(ID3D12Device* pDevice, int start, int count, const D3D12_RESOURCE_DESC& desc);
 
 HRESULT UpdateSubresourcesImpl_(
 	ID3D12Device* pDevice,
@@ -82,7 +82,7 @@ HRESULT UpdateSubresources(
 	return result;
 }
 
-int GetSubresourcesFootprint_(ID3D12Device* pDevice, int start, int count, const D3D12_RESOURCE_DESC& desc)
+UINT64 GetSubresourcesFootprint_(ID3D12Device* pDevice, int start, int count, const D3D12_RESOURCE_DESC& desc)
 {
 	UINT64 result;
 	pDevice->GetCopyableFootprints(
@@ -95,7 +95,7 @@ int GetSubresourcesFootprint_(ID3D12Device* pDevice, int start, int count, const
 		&result
 	);
 
-	return static_cast<int>(result);
+	return result;
 }
 
 HRESULT UpdateSubresourcesImpl_(

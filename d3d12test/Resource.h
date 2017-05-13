@@ -13,8 +13,8 @@ struct ResourceDesc
 	D3D12_HEAP_TYPE HeapType = D3D12_HEAP_TYPE_DEFAULT;
 	DXGI_FORMAT Format = DXGI_FORMAT_UNKNOWN;
 	D3D12_RESOURCE_DIMENSION Dimension;
-	int Width;
-	int Height = 1;
+	UINT64 Width;
+	UINT Height = 1;
 	short Depth = 1;
 	short MipLevels = 1;
 	int SampleCount = 1;
