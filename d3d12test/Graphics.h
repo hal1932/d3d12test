@@ -16,6 +16,9 @@ public:
 	Resource* CurrentRenderTargetPtr() { return renderTargetPtrs_[screen_.FrameIndex()].get(); }
 	Resource* DepthStencilPtr() { return depthStencilPtr_.get(); }
 
+	size_t GraphicsListCount() { return graphicsListPtrs_.size(); }
+	size_t GraphicsListCount() const { return graphicsListPtrs_.size(); }
+
 	HRESULT ResizeScreen(const ScreenContextDesc& desc);
 	HRESULT ResizeScreen(int width, int height);
 
