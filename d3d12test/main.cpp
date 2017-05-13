@@ -11,6 +11,7 @@
 #include <iostream>
 
 #include "lib/lib.h"
+#include "Graphics.h"
 
 using Microsoft::WRL::ComPtr;
 
@@ -18,74 +19,6 @@ const int cScreenWidth = 1280;
 const int cScreenHeight = 720;
 const int cBufferCount = 2;
 
-struct Graphics1
-{
-	Device device;
-	ScreenContext screen;
-
-	ResourceViewHeap renderTargetViewHeap;
-	std::vector<std::unique_ptr<Resource>> renderTargetViewPtrs;
-
-	ResourceViewHeap depthStencilViewHeap;
-	std::unique_ptr<Resource> depthStencilViewPtr;
-
-	CommandQueue commandQueue;
-
-	CommandContainer commandContainer;
-	std::unique_ptr<CommandList> commandListPtr;
-};
-Graphics1 gfx;
-
-void ResizeScreen(HWND hWnd, int width, int height)
-{
-	gfx.depthStencilViewPtr.reset();
-	gfx.depthStencilViewHeap.Reset();
-
-	gfx.renderTargetViewPtrs.clear();
-	gfx.renderTargetViewHeap.Reset();
-
-	gfx.screen.Reset();
-
-	{
-		ScreenContextDesc desc;
-		desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-		desc.Width = width;
-		desc.Height = height;
-		desc.OutputWindow = hWnd;
-
-		gfx.screen.Create(&gfx.device, &gfx.commandQueue, desc);
-	}
-
-	gfx.renderTargetViewHeap.CreateHeap(&gfx.device, { HeapDesc::ViewType::RenderTargetView, 2 });
-	{
-		for (auto pResource : gfx.renderTargetViewHeap.CreateRenderTargetViewFromBackBuffer(&gfx.screen))
-		{
-			gfx.renderTargetViewPtrs.push_back(std::unique_ptr<Resource>(pResource));
-		}
-	}
-
-	gfx.depthStencilViewHeap.CreateHeap(&gfx.device, { HeapDesc::ViewType::DepthStencilView, 1 });
-	gfx.depthStencilViewPtr = std::unique_ptr<Resource>(gfx.depthStencilViewHeap.CreateDepthStencilView(
-		&gfx.screen,
-		{ width, height, DXGI_FORMAT_D24_UNORM_S8_UINT, 1.0f, 0 }));
-}
-
-bool SetupGraphics(HWND hWnd)
-{
-	gfx.device.EnableDebugLayer();
-	gfx.device.Create();
-
-	gfx.commandQueue.Create(&gfx.device);
-
-	ResizeScreen(hWnd, cScreenWidth, cScreenHeight);
-
-	gfx.commandContainer.Create(&gfx.device);
-
-	gfx.commandListPtr = std::unique_ptr<CommandList>(gfx.commandContainer.CreateCommandList());
-	gfx.commandListPtr->Close();
-	
-	return true;
-}
 
 __declspec(align(256))
 struct ModelTransform
@@ -116,16 +49,17 @@ struct Scene
 };
 Scene scene;
 
-bool SetupScene()
+bool SetupScene(Graphics& g)
 {
-	auto pNativeDevice = gfx.device.NativePtr();
+	auto pDevice = g.DevicePtr();
+	auto pNativeDevice = pDevice->NativePtr();
 
 	scene.modelPtr = std::make_unique<fbx::Model>();
 	scene.modelPtr->LoadFromFile("assets/test_a.fbx");
-	scene.modelPtr->UpdateResources(&gfx.device);
-	scene.modelPtr->UpdateSubresources(gfx.commandListPtr.get(), &gfx.commandQueue);
+	scene.modelPtr->UpdateResources(pDevice);
+	scene.modelPtr->UpdateSubresources(g.GraphicsListPtr(0), g.CommandQueuePtr());
 	
-	scene.cbSrUavHeap.CreateHeap(&gfx.device, { HeapDesc::ViewType::CbSrUaView, 2 });
+	scene.cbSrUavHeap.CreateHeap(pDevice, { HeapDesc::ViewType::CbSrUaView, 2 });
 	scene.modelTransformCbvPtr = std::unique_ptr<Resource>(
 		scene.cbSrUavHeap.CreateConstantBufferView({ sizeof(scene.modelTransform), D3D12_TEXTURE_LAYOUT_ROW_MAJOR }));
 
@@ -244,96 +178,85 @@ bool SetupScene()
 	return true;
 }
 
-void WaitForCommandExecution()
-{
-	gfx.commandQueue.WaitForExecution();
-
-	// バックバッファのインデックスを更新
-	gfx.screen.UpdateFrameIndex();
-}
-
-void Draw()
+void Draw(Graphics& g)
 {
 	scene.rotateAngle += 0.01f;
 
 	{
 		scene.modelTransform.World = DirectX::XMMatrixRotationY(scene.rotateAngle);
 		scene.modelTransform.View = DirectX::XMMatrixLookAtLH({ 0.0f, 0.0f, 5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
-		scene.modelTransform.Proj = DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4, gfx.screen.AspectRatio(), 1.0f, 1000.f);
+		scene.modelTransform.Proj = DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4, g.ScreenPtr()->AspectRatio(), 1.0f, 1000.f);
 
 		memcpy(scene.modelTransformBuffer, &scene.modelTransform, sizeof(scene.modelTransform));
 	}
 
-	gfx.commandContainer.ClearState();
-	gfx.commandListPtr->Open(scene.pPipelineState.Get());
+	g.ClearCommand();
 
-	auto pCmdList = gfx.commandListPtr->AsGraphicsList();
+	auto pGraphicsList = g.GraphicsListPtr(0);
+	auto pNativeGraphicsList = pGraphicsList->AsGraphicsList();
+
+	pGraphicsList->Open(scene.pPipelineState.Get());
 
 	{
 		auto heap = scene.cbSrUavHeap.NativePtr();
-		pCmdList->SetDescriptorHeaps(1, &heap);
+		pNativeGraphicsList->SetDescriptorHeaps(1, &heap);
 
-		pCmdList->SetGraphicsRootSignature(scene.pRootSignature.Get());
+		pNativeGraphicsList->SetGraphicsRootSignature(scene.pRootSignature.Get());
 
-		pCmdList->SetGraphicsRootDescriptorTable(0, scene.modelTransformCbvPtr->GpuDescriptorHandle());
-		pCmdList->SetGraphicsRootDescriptorTable(1, scene.pTextureSrv->GpuDescriptorHandle());
+		pNativeGraphicsList->SetGraphicsRootDescriptorTable(0, scene.modelTransformCbvPtr->GpuDescriptorHandle());
+		pNativeGraphicsList->SetGraphicsRootDescriptorTable(1, scene.pTextureSrv->GpuDescriptorHandle());
 	}
 
-	scene.viewport = { 0.0f, 0.0f, (float)gfx.screen.Width(), (float)gfx.screen.Height(), 0.0f, 1.0f };
-	pCmdList->RSSetViewports(1, &scene.viewport);
+	const auto& screen = g.ScreenPtr()->Desc();
+	scene.viewport = { 0.0f, 0.0f, (float)screen.Width, (float)screen.Height, 0.0f, 1.0f };
+	pNativeGraphicsList->RSSetViewports(1, &scene.viewport);
 
-	scene.scissorRect = { 0, 0, gfx.screen.Width(), gfx.screen.Height() };
-	pCmdList->RSSetScissorRects(1, &scene.scissorRect);
+	scene.scissorRect = { 0, 0, screen.Width, screen.Height };
+	pNativeGraphicsList->RSSetScissorRects(1, &scene.scissorRect);
 
 	D3D12_RESOURCE_BARRIER barrier = {};
 	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	barrier.Transition.pResource = gfx.renderTargetViewPtrs[gfx.screen.FrameIndex()]->NativePtr();
+	barrier.Transition.pResource = g.CurrentRenderTargetPtr()->NativePtr();
 	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
 	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-	pCmdList->ResourceBarrier(1, &barrier);
+	pNativeGraphicsList->ResourceBarrier(1, &barrier);
 
-	auto handleRTV = gfx.renderTargetViewPtrs[gfx.screen.FrameIndex()]->CpuDescriptorHandle();
-	auto handleDSV = gfx.depthStencilViewPtr->CpuDescriptorHandle();
+	auto handleRTV = g.CurrentRenderTargetPtr()->CpuDescriptorHandle();
+	auto handleDSV = g.DepthStencilPtr()->CpuDescriptorHandle();
 
-	pCmdList->OMSetRenderTargets(1, &handleRTV, FALSE, &handleDSV);
+	pNativeGraphicsList->OMSetRenderTargets(1, &handleRTV, FALSE, &handleDSV);
 
 	FLOAT clearValue[] = { 0.2f, 0.2f, 0.5f, 1.0f };
-	pCmdList->ClearRenderTargetView(handleRTV, clearValue, 0, nullptr);
-	pCmdList->ClearDepthStencilView(handleDSV, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+	pNativeGraphicsList->ClearRenderTargetView(handleRTV, clearValue, 0, nullptr);
+	pNativeGraphicsList->ClearDepthStencilView(handleDSV, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
-	pCmdList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	pNativeGraphicsList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	const auto& pMesh = scene.modelPtr->MeshPtr(0);
 	auto vbView = pMesh->VertexBuffer()->GetVertexBufferView(sizeof(fbx::Mesh::Vertex));
-	pCmdList->IASetVertexBuffers(0, 1, &vbView);
+	pNativeGraphicsList->IASetVertexBuffers(0, 1, &vbView);
 
 	auto ibView = pMesh->IndexBuffer()->GetIndexBufferView(DXGI_FORMAT_R16_UINT);
-	pCmdList->IASetIndexBuffer(&ibView);
+	pNativeGraphicsList->IASetIndexBuffer(&ibView);
 
-	pCmdList->DrawIndexedInstanced(pMesh->IndexCount(), 1, 0, 0, 0);
+	pNativeGraphicsList->DrawIndexedInstanced(pMesh->IndexCount(), 1, 0, 0, 0);
 
 	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-	pCmdList->ResourceBarrier(1, &barrier);
+	pNativeGraphicsList->ResourceBarrier(1, &barrier);
 
-	gfx.commandListPtr->Close();
+	pGraphicsList->Close();
 
-	gfx.commandQueue.Submit(gfx.commandListPtr.get());
+	g.SubmitCommand(pGraphicsList);
+	g.SwapBuffers();
 
-	gfx.screen.SwapBuffers();
-
-	WaitForCommandExecution();
+	g.WaitForCommandExecution();
 }
 
 void ShutdownScene()
 {
 	scene.modelPtr.reset();
 	scene.modelTransformCbvPtr->Unmap(0);
-}
-
-void ShutdownGraphics()
-{
-	WaitForCommandExecution();
 }
 
 int MainImpl(int, char**)
@@ -347,25 +270,38 @@ int MainImpl(int, char**)
 	window.Resize(1280, 720);
 	window.Open();
 
-	window.SetEventHandler(WindowEvent::Resize, [&window](auto e)
+	Graphics graphics;
+
+	window.SetEventHandler(WindowEvent::Resize, [&window, &graphics](auto e)
 	{
-		WaitForCommandExecution();
+		graphics.WaitForCommandExecution();
 
 		auto pArg = static_cast<ResizeEventArg*>(e);
-		ResizeScreen(window.Handle(), pArg->Width, pArg->Height);
+		graphics.ResizeScreen(pArg->Width, pArg->Height);
 	});
 
-	SetupGraphics(window.Handle());
-	SetupScene();
+	graphics.Setup(true);
+	graphics.AddGraphicsComandList(1);
 
-	window.MessageLoop([]()
+	ScreenContextDesc desc = {};
+	desc.BufferCount = cBufferCount;
+	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+	desc.Width = cScreenWidth;
+	desc.Height = cScreenHeight;
+	desc.OutputWindow = window.Handle();
+	desc.Windowed = true;
+
+	graphics.ResizeScreen(desc);
+
+	SetupScene(graphics);
+
+	window.MessageLoop([&graphics]()
 	{
-		Draw();
+		Draw(graphics);
 	});
 
+	graphics.WaitForCommandExecution();
 	ShutdownScene();
-	ShutdownGraphics();
-
 	window.Close();
 
 	fbx::Model::Shutdown();
