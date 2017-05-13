@@ -130,24 +130,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="CommandContainer.cpp" />
-    <ClCompile Include="CommandList.cpp" />
-    <ClCompile Include="CommandQueue.cpp" />
-    <ClCompile Include="Device.cpp" />
-    <ClCompile Include="fbxMaterial.cpp" />
-    <ClCompile Include="fbxMesh.cpp" />
-    <ClCompile Include="fbxModel.cpp" />
-    <ClCompile Include="GpuFence.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="Resource.cpp" />
-    <ClCompile Include="ResourceViewHeap.cpp" />
-    <ClCompile Include="ScreenContext.cpp" />
-    <ClCompile Include="Shader.cpp" />
-    <ClCompile Include="Texture.cpp" />
-    <ClCompile Include="UpdateSubresource.cpp" />
-    <ClCompile Include="Window.cpp" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="assets\SimpleDef.hlsli" />
     <None Include="assets\test_a.fbx" />
     <None Include="assets\test_b.fbx" />
@@ -171,23 +153,42 @@
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CommandContainer.h" />
-    <ClInclude Include="CommandList.h" />
-    <ClInclude Include="CommandQueue.h" />
-    <ClInclude Include="common.h" />
-    <ClInclude Include="Device.h" />
-    <ClInclude Include="fbxMaterial.h" />
-    <ClInclude Include="fbxMesh.h" />
-    <ClInclude Include="fbxModel.h" />
-    <ClInclude Include="GpuFence.h" />
-    <ClInclude Include="Resource.h" />
-    <ClInclude Include="ResourceViewHeap.h" />
-    <ClInclude Include="ScreenContext.h" />
-    <ClInclude Include="Shader.h" />
-    <ClInclude Include="Texture.h" />
-    <ClInclude Include="UpdateSubresources.h" />
-    <ClInclude Include="Window.h" />
-    <ClInclude Include="WindowEvent.h" />
+    <ClInclude Include="lib\CommandContainer.h" />
+    <ClInclude Include="lib\CommandList.h" />
+    <ClInclude Include="lib\CommandQueue.h" />
+    <ClInclude Include="lib\common.h" />
+    <ClInclude Include="lib\Device.h" />
+    <ClInclude Include="lib\fbxMaterial.h" />
+    <ClInclude Include="lib\fbxMesh.h" />
+    <ClInclude Include="lib\fbxModel.h" />
+    <ClInclude Include="lib\GpuFence.h" />
+    <ClInclude Include="lib\lib.h" />
+    <ClInclude Include="lib\Resource.h" />
+    <ClInclude Include="lib\ResourceViewHeap.h" />
+    <ClInclude Include="lib\ScreenContext.h" />
+    <ClInclude Include="lib\Shader.h" />
+    <ClInclude Include="lib\Texture.h" />
+    <ClInclude Include="lib\UpdateSubresources.h" />
+    <ClInclude Include="lib\Window.h" />
+    <ClInclude Include="lib\WindowEvent.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="lib\CommandContainer.cpp" />
+    <ClCompile Include="lib\CommandList.cpp" />
+    <ClCompile Include="lib\CommandQueue.cpp" />
+    <ClCompile Include="lib\Device.cpp" />
+    <ClCompile Include="lib\fbxMaterial.cpp" />
+    <ClCompile Include="lib\fbxMesh.cpp" />
+    <ClCompile Include="lib\fbxModel.cpp" />
+    <ClCompile Include="lib\GpuFence.cpp" />
+    <ClCompile Include="lib\Resource.cpp" />
+    <ClCompile Include="lib\ResourceViewHeap.cpp" />
+    <ClCompile Include="lib\ScreenContext.cpp" />
+    <ClCompile Include="lib\Shader.cpp" />
+    <ClCompile Include="lib\Texture.cpp" />
+    <ClCompile Include="lib\UpdateSubresource.cpp" />
+    <ClCompile Include="lib\Window.cpp" />
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -4,45 +4,19 @@
 
 #include <memory>
 
-#include <d3d12.h>
-#include <dxgi1_4.h>
-#include <D3Dcompiler.h>
-#include <d3dcommon.h>
-#include <DirectXMath.h>
-
 #include <wrl.h>
 #include <Windows.h>
 #include <tchar.h>
 #include <string>
 #include <iostream>
 
-#include "common.h"
-#include "Window.h"
-#include "Device.h"
-#include "ScreenContext.h"
-#include "GpuFence.h"
-#include "CommandQueue.h"
-#include "CommandContainer.h"
-#include "CommandList.h"
-#include "ResourceViewHeap.h"
-#include "Resource.h"
-#include "Shader.h"
-#include "fbxModel.h"
-#include "fbxMesh.h"
-#include "fbxMaterial.h"
-
-#pragma comment(lib, "D3d12.lib")
-#pragma comment(lib, "dxgi.lib")
-#pragma comment(lib, "d3dcompiler.lib")
+#include "lib/lib.h"
 
 using Microsoft::WRL::ComPtr;
-
-typedef std::basic_string<TCHAR> tstring;
 
 const int cScreenWidth = 1280;
 const int cScreenHeight = 720;
 const int cBufferCount = 2;
-
 
 struct Graphics
 {
