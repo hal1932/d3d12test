@@ -366,8 +366,6 @@ int MainImpl(int, char**)
 {
 	fbx::Model::Setup();
 
-	auto hInstance = GetModuleHandle(nullptr);
-
 	Window window;
 	window.Setup(GetModuleHandle(nullptr), _TEXT("d3d12test"));
 
@@ -392,7 +390,6 @@ int MainImpl(int, char**)
 	});
 
 	ShutdownScene();
-	gfx.device.ReportLiveObjects();
 	ShutdownGraphics();
 
 	window.Close();
