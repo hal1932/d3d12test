@@ -109,8 +109,4 @@ private:
 	int descriptorHandleIndex_ = -1;
 
 	HRESULT CreateCommitedImpl_(Device* pDevice, const ResourceDesc& desc, const D3D12_CLEAR_VALUE* pClearValue);
-	UINT64 GetSubresourcesFootprint_(int start, int count);
-	HRESULT UpdateSubresourcesImpl_(const D3D12_SUBRESOURCE_DATA* pData, CommandList* pCommandList, ID3D12Resource* pIntermediate, UINT64 offset, UINT start, UINT count);
-	HRESULT UpdateSubresourcesImpl_(const D3D12_SUBRESOURCE_DATA* pData, CommandList* pCommandList, ID3D12Resource* pIntermediate, UINT start, UINT count, UINT64 requiredSize, D3D12_PLACED_SUBRESOURCE_FOOTPRINT* pLayouts, UINT* pRowCounts, UINT64* pRowSizesInBytes);
-	void CopySubresource_(const D3D12_MEMCPY_DEST* pDest, const D3D12_SUBRESOURCE_DATA* pData, UINT64 rowSizeInBytes, UINT rowCount, UINT sliceCount);
 };

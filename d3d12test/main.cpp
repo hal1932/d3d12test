@@ -114,7 +114,7 @@ bool SetupGraphics(HWND hWnd)
 }
 
 __declspec(align(256))
-struct TransformBuffer
+struct ModelTransform
 {
 	DirectX::XMMATRIX World;
 	DirectX::XMMATRIX View;
@@ -129,11 +129,13 @@ struct Scene
 
 	std::unique_ptr<fbx::Model> modelPtr;
 
-	TransformBuffer transformBuffer;
 	ResourceViewHeap cbSrUavHeap;
-	std::unique_ptr<Resource> transformCbvPtr;
+
+	ModelTransform modelTransform;
+	std::unique_ptr<Resource> modelTransformCbvPtr;
+	void* modelTransformBuffer;
+
 	Resource* pTextureSrv;
-	void* pCbvData;
 
 	D3D12_VIEWPORT viewport;
 	D3D12_RECT scissorRect;
@@ -150,12 +152,12 @@ bool SetupScene()
 	scene.modelPtr->UpdateSubresources(gfx.pCommandList, &gfx.commandQueue);
 	
 	scene.cbSrUavHeap.CreateHeap(&gfx.device, { HeapDesc::ViewType::CbSrUaView, 2 });
-	scene.transformCbvPtr = std::unique_ptr<Resource>(
-		scene.cbSrUavHeap.CreateConstantBufferView({ sizeof(scene.transformBuffer), D3D12_TEXTURE_LAYOUT_ROW_MAJOR }));
+	scene.modelTransformCbvPtr = std::unique_ptr<Resource>(
+		scene.cbSrUavHeap.CreateConstantBufferView({ sizeof(scene.modelTransform), D3D12_TEXTURE_LAYOUT_ROW_MAJOR }));
 
 	{
 		scene.pTextureSrv = scene.cbSrUavHeap.CreateShaderResourceView({ D3D12_SRV_DIMENSION_TEXTURE2D,{ scene.modelPtr->MeshPtr(0)->MaterialPtr()->TexturePtr() } });
-		scene.pCbvData = scene.transformCbvPtr->Map(0);
+		scene.modelTransformBuffer = scene.modelTransformCbvPtr->Map(0);
 	}
 
 	{
@@ -281,11 +283,11 @@ void Draw()
 	scene.rotateAngle += 0.01f;
 
 	{
-		scene.transformBuffer.World = DirectX::XMMatrixRotationY(scene.rotateAngle);
-		scene.transformBuffer.View = DirectX::XMMatrixLookAtLH({ 0.0f, 0.0f, 5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
-		scene.transformBuffer.Proj = DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4, gfx.screen.AspectRatio(), 1.0f, 1000.f);
+		scene.modelTransform.World = DirectX::XMMatrixRotationY(scene.rotateAngle);
+		scene.modelTransform.View = DirectX::XMMatrixLookAtLH({ 0.0f, 0.0f, 5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
+		scene.modelTransform.Proj = DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4, gfx.screen.AspectRatio(), 1.0f, 1000.f);
 
-		memcpy(scene.pCbvData, &scene.transformBuffer, sizeof(scene.transformBuffer));
+		memcpy(scene.modelTransformBuffer, &scene.modelTransform, sizeof(scene.modelTransform));
 	}
 
 	gfx.commandContainer.ClearState();
@@ -299,7 +301,7 @@ void Draw()
 
 		pCmdList->SetGraphicsRootSignature(scene.pRootSignature.Get());
 
-		pCmdList->SetGraphicsRootDescriptorTable(0, scene.transformCbvPtr->GpuDescriptorHandle());
+		pCmdList->SetGraphicsRootDescriptorTable(0, scene.modelTransformCbvPtr->GpuDescriptorHandle());
 		pCmdList->SetGraphicsRootDescriptorTable(1, scene.pTextureSrv->GpuDescriptorHandle());
 	}
 
@@ -352,7 +354,7 @@ void Draw()
 void ShutdownScene()
 {
 	scene.modelPtr.reset();
-	scene.transformCbvPtr->Unmap(0);
+	scene.modelTransformCbvPtr->Unmap(0);
 }
 
 void ShutdownGraphics()
@@ -390,6 +392,7 @@ int MainImpl(int, char**)
 	});
 
 	ShutdownScene();
+	gfx.device.ReportLiveObjects();
 	ShutdownGraphics();
 
 	window.Close();

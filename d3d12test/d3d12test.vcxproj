@@ -144,6 +144,7 @@
     <ClCompile Include="ScreenContext.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="Texture.cpp" />
+    <ClCompile Include="UpdateSubresource.cpp" />
     <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -184,8 +185,12 @@
     <ClInclude Include="ScreenContext.h" />
     <ClInclude Include="Shader.h" />
     <ClInclude Include="Texture.h" />
+    <ClInclude Include="UpdateSubresources.h" />
     <ClInclude Include="Window.h" />
     <ClInclude Include="WindowEvent.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="d3d12test.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
