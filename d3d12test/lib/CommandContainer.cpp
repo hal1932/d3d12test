@@ -5,10 +5,6 @@
 
 CommandContainer::~CommandContainer()
 {
-	for (auto item : itemPtrs_)
-	{
-		SafeDelete(&item);
-	}
 	SafeRelease(&pCommandAllocator_);
 }
 
@@ -25,7 +21,7 @@ HRESULT CommandContainer::Create(Device* pDevice, SubmitType type)
 	return result;
 }
 
-CommandList* CommandContainer::AddGraphicsList()
+CommandList* CommandContainer::CreateCommandList()
 {
 	auto pList = new CommandList(this);
 
@@ -36,8 +32,6 @@ CommandList* CommandContainer::AddGraphicsList()
 	{
 		return nullptr;
 	}
-
-	itemPtrs_.push_back(pList);
 
 	return pList;
 }

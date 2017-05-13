@@ -18,7 +18,7 @@ const int cScreenWidth = 1280;
 const int cScreenHeight = 720;
 const int cBufferCount = 2;
 
-struct Graphics
+struct Graphics1
 {
 	Device device;
 	ScreenContext screen;
@@ -32,9 +32,9 @@ struct Graphics
 	CommandQueue commandQueue;
 
 	CommandContainer commandContainer;
-	CommandList* pCommandList;
+	std::unique_ptr<CommandList> commandListPtr;
 };
-Graphics gfx;
+Graphics1 gfx;
 
 void ResizeScreen(HWND hWnd, int width, int height)
 {
@@ -81,8 +81,8 @@ bool SetupGraphics(HWND hWnd)
 
 	gfx.commandContainer.Create(&gfx.device);
 
-	gfx.pCommandList = gfx.commandContainer.AddGraphicsList();
-	gfx.pCommandList->Close();
+	gfx.commandListPtr = std::unique_ptr<CommandList>(gfx.commandContainer.CreateCommandList());
+	gfx.commandListPtr->Close();
 	
 	return true;
 }
@@ -123,7 +123,7 @@ bool SetupScene()
 	scene.modelPtr = std::make_unique<fbx::Model>();
 	scene.modelPtr->LoadFromFile("assets/test_a.fbx");
 	scene.modelPtr->UpdateResources(&gfx.device);
-	scene.modelPtr->UpdateSubresources(gfx.pCommandList, &gfx.commandQueue);
+	scene.modelPtr->UpdateSubresources(gfx.commandListPtr.get(), &gfx.commandQueue);
 	
 	scene.cbSrUavHeap.CreateHeap(&gfx.device, { HeapDesc::ViewType::CbSrUaView, 2 });
 	scene.modelTransformCbvPtr = std::unique_ptr<Resource>(
@@ -265,9 +265,9 @@ void Draw()
 	}
 
 	gfx.commandContainer.ClearState();
-	gfx.pCommandList->Open(scene.pPipelineState.Get());
+	gfx.commandListPtr->Open(scene.pPipelineState.Get());
 
-	auto pCmdList = gfx.pCommandList->AsGraphicsList();
+	auto pCmdList = gfx.commandListPtr->AsGraphicsList();
 
 	{
 		auto heap = scene.cbSrUavHeap.NativePtr();
@@ -316,9 +316,9 @@ void Draw()
 	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
 	pCmdList->ResourceBarrier(1, &barrier);
 
-	gfx.pCommandList->Close();
+	gfx.commandListPtr->Close();
 
-	gfx.commandQueue.Submit(gfx.pCommandList);
+	gfx.commandQueue.Submit(gfx.commandListPtr.get());
 
 	gfx.screen.SwapBuffers();
 

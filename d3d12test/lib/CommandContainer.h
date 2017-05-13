@@ -22,14 +22,12 @@ public:
 
 	HRESULT Create(Device* pDevice, SubmitType type = SubmitType::Direct);
 
-	CommandList* AddGraphicsList();
-	CommandList* AddBundle() { return nullptr; }
+	CommandList* CreateCommandList();
 	void ClearState() { pCommandAllocator_->Reset(); }
 
 private:
 	Device* pDevice_ = nullptr;
 	ID3D12CommandAllocator* pCommandAllocator_ = nullptr;
 	SubmitType type_;
-	std::vector<CommandList*> itemPtrs_;
 };
 
