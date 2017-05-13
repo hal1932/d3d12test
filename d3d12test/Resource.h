@@ -6,6 +6,7 @@ class Device;
 class CommandList;
 class CommandQueue;
 class GpuFence;
+class ResourceViewHeap;
 
 struct ResourceDesc
 {
@@ -94,10 +95,18 @@ public:
 	D3D12_VERTEX_BUFFER_VIEW GetVertexBufferView(int stride);
 	D3D12_INDEX_BUFFER_VIEW GetIndexBufferView(DXGI_FORMAT format);
 
+	D3D12_CPU_DESCRIPTOR_HANDLE CpuDescriptorHandle();
+	D3D12_GPU_DESCRIPTOR_HANDLE GpuDescriptorHandle();
+
+	void SetResourceViewHeap(ResourceViewHeap* pHeap, int descriptorHandleIndex);
+
 private:
 	Device* pDevice_ = nullptr;
 	ID3D12Resource* pResource_ = nullptr;
 	ResourceDesc desc_;
+
+	ResourceViewHeap* pHeap_ = nullptr;
+	int descriptorHandleIndex_ = -1;
 
 	HRESULT CreateCommitedImpl_(Device* pDevice, const ResourceDesc& desc, const D3D12_CLEAR_VALUE* pClearValue);
 	UINT64 GetSubresourcesFootprint_(int start, int count);

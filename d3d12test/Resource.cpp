@@ -4,6 +4,7 @@
 #include "CommandList.h"
 #include "CommandQueue.h"
 #include "GpuFence.h"
+#include "ResourceViewHeap.h"
 #include <d3dx12.h>
 
 Resource::Resource(ID3D12Resource* pResource, Device* pDevice)
@@ -210,6 +211,30 @@ HRESULT Resource::UpdateSubresources(const D3D12_SUBRESOURCE_DATA* pData, Comman
 	SafeRelease(&pIntermediate);
 
 	return result;
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE Resource::CpuDescriptorHandle()
+{
+	if (pHeap_)
+	{
+		return pHeap_->CpuHandle(descriptorHandleIndex_);
+	}
+	return { 0 };
+}
+
+D3D12_GPU_DESCRIPTOR_HANDLE Resource::GpuDescriptorHandle()
+{
+	if (pHeap_)
+	{
+		return pHeap_->GpuHandle(descriptorHandleIndex_);
+	}
+	return{ 0 };
+}
+
+void Resource::SetResourceViewHeap(ResourceViewHeap* pHeap, int descriptorHandleIndex)
+{
+	pHeap_ = pHeap;
+	descriptorHandleIndex_ = descriptorHandleIndex;
 }
 
 UINT64 Resource::GetSubresourcesFootprint_(int start, int count)

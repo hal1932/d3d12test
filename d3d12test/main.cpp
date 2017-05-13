@@ -299,8 +299,8 @@ void Draw()
 
 		pCmdList->SetGraphicsRootSignature(scene.pRootSignature.Get());
 
-		pCmdList->SetGraphicsRootDescriptorTable(0, scene.cbSrUavHeap.GpuHandle(0));
-		pCmdList->SetGraphicsRootDescriptorTable(1, scene.cbSrUavHeap.GpuHandle(1));
+		pCmdList->SetGraphicsRootDescriptorTable(0, scene.transformCbvPtr->GpuDescriptorHandle());
+		pCmdList->SetGraphicsRootDescriptorTable(1, scene.pTextureSrv->GpuDescriptorHandle());
 	}
 
 	scene.viewport = { 0.0f, 0.0f, (float)gfx.screen.Width(), (float)gfx.screen.Height(), 0.0f, 1.0f };
@@ -316,8 +316,8 @@ void Draw()
 	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	pCmdList->ResourceBarrier(1, &barrier);
 
-	auto handleRTV = gfx.renderTargetViewHeap.CpuHandle(gfx.screen.FrameIndex());
-	auto handleDSV = gfx.depthStencilViewHeap.CpuHandle(0);
+	auto handleRTV = gfx.renderTargetViewPtrs[gfx.screen.FrameIndex()]->CpuDescriptorHandle();
+	auto handleDSV = gfx.depthStencilViewPtr->CpuDescriptorHandle();
 
 	pCmdList->OMSetRenderTargets(1, &handleRTV, FALSE, &handleDSV);
 
