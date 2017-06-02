@@ -165,21 +165,16 @@
     <ClInclude Include="lib\fbxModel.h" />
     <ClInclude Include="lib\GpuFence.h" />
     <ClInclude Include="lib\lib.h" />
-    <ClInclude Include="lib\MaterialPrefab.h" />
-    <ClInclude Include="lib\MeshPrefab.h" />
     <ClInclude Include="lib\Model.h" />
-    <ClInclude Include="lib\ModelPrefab.h" />
     <ClInclude Include="lib\Resource.h" />
     <ClInclude Include="lib\ResourceViewHeap.h" />
     <ClInclude Include="lib\ScreenContext.h" />
     <ClInclude Include="lib\Shader.h" />
     <ClInclude Include="lib\Texture.h" />
-    <ClInclude Include="lib\TexturePrefab.h" />
+    <ClInclude Include="lib\Transform.h" />
     <ClInclude Include="lib\UpdateSubresources.h" />
     <ClInclude Include="lib\Window.h" />
     <ClInclude Include="lib\WindowEvent.h" />
-    <ClInclude Include="ModelManager.h" />
-    <ClInclude Include="ModelPass.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="GameScene.cpp" />
@@ -192,20 +187,14 @@
     <ClCompile Include="lib\fbxMesh.cpp" />
     <ClCompile Include="lib\fbxModel.cpp" />
     <ClCompile Include="lib\GpuFence.cpp" />
-    <ClCompile Include="lib\MaterialPrefab.cpp" />
-    <ClCompile Include="lib\MeshPrefab.cpp" />
-    <ClCompile Include="lib\ModelPrefab.cpp" />
     <ClCompile Include="lib\Resource.cpp" />
     <ClCompile Include="lib\ResourceViewHeap.cpp" />
     <ClCompile Include="lib\ScreenContext.cpp" />
     <ClCompile Include="lib\Shader.cpp" />
     <ClCompile Include="lib\Texture.cpp" />
-    <ClCompile Include="lib\TexturePrefab.cpp" />
     <ClCompile Include="lib\UpdateSubresource.cpp" />
     <ClCompile Include="lib\Window.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="ModelManager.cpp" />
-    <ClCompile Include="ModelPass.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
