@@ -183,8 +183,14 @@ void Draw(Graphics& g)
 	scene.rotateAngle += 0.01f;
 
 	{
-		scene.modelTransform.World = DirectX::XMMatrixRotationY(scene.rotateAngle);
-		scene.modelTransform.View = DirectX::XMMatrixLookAtLH({ 0.0f, 0.0f, 5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
+		auto t = scene.modelPtr->TransformPtr();
+		//t->SetScaling(1.0f, 2.0f, 1.0f);
+		t->SetRotation(0.0f, scene.rotateAngle, 0.0f);
+		//t->SetTranslation(1.0f, 1.0f, 0.0f);
+		t->UpdateMatrix();
+
+		scene.modelTransform.World = t->Matrix();
+		scene.modelTransform.View = DirectX::XMMatrixLookAtLH({ 0.0f, 0.0f, -5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
 		scene.modelTransform.Proj = DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4, g.ScreenPtr()->AspectRatio(), 1.0f, 1000.f);
 
 		memcpy(scene.modelTransformBuffer, &scene.modelTransform, sizeof(scene.modelTransform));
