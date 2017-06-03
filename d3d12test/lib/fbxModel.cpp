@@ -34,7 +34,11 @@ Model::Model() {}
 Model::~Model()
 {
 	SafeDeleteSequence(&meshPtrs_);
-	SafeDestroy(&pScene_);
+
+	if (!isReference_)
+	{
+		SafeDestroy(&pScene_);
+	}
 }
 
 
@@ -90,6 +94,25 @@ HRESULT Model::UpdateSubresources(CommandList* pCommandList, CommandQueue* pComm
 	return result;
 }
 
+Model* Model::CreateReference()
+{
+	auto other = new Model();
+	other->isReference_ = true;
+
+	other->name_ = name_;
+	other->pScene_ = pScene_;
+
+	other->meshPtrs_.resize(meshPtrs_.size());
+	for (auto i = 0; i < meshPtrs_.size(); ++i)
+	{
+		other->meshPtrs_[i] = meshPtrs_[i]->CreateReference();
+	}
+
+	other->transform_ = transform_.Clone();
+
+	return other;
+}
+
 HRESULT Model::UpdateResourcesRec_(FbxNode* pNode, Device* pDevice)
 {
 	if (!pNode)
@@ -102,7 +125,7 @@ HRESULT Model::UpdateResourcesRec_(FbxNode* pNode, Device* pDevice)
 	auto pAttribute = pNode->GetNodeAttribute();
 	if (pAttribute)
 	{
-		pName_ = pAttribute->GetName();
+		name_ = pAttribute->GetName();
 
 		auto type = pAttribute->GetAttributeType();
 		switch (type)

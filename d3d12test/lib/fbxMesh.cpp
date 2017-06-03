@@ -11,13 +11,22 @@ Mesh::Mesh() {}
 
 Mesh::~Mesh()
 {
+	if (!isReference_)
+	{
+		SafeDelete(&pVertexCount_);
+		SafeDelete(&pIndexCount_);
+
+		SafeDelete(&pIndexBuffer_);
+		SafeDelete(&pVertexBuffer_);
+	}
+
 	SafeDelete(&pMaterial_);
-	SafeDelete(&pIndexBuffer_);
-	SafeDelete(&pVertexBuffer_);
 }
 
 HRESULT Mesh::UpdateResources(FbxMesh* pMesh, Device* pDevice)
 {
+	Setup_();
+
 	UpdateVertexResources_(pMesh, pDevice);
 	UpdateIndexResources_(pMesh, pDevice);
 
@@ -30,6 +39,31 @@ HRESULT Mesh::UpdateResources(FbxMesh* pMesh, Device* pDevice)
 HRESULT Mesh::UpdateSubresources(CommandList* pCommandList, CommandQueue* pCommandQueue)
 {
 	return pMaterial_->UpdateSubresources(pCommandList, pCommandQueue);
+}
+
+Mesh* Mesh::CreateReference()
+{
+	auto other = new Mesh();
+	other->isReference_ = true;
+
+	other->pVertexBuffer_ = pVertexBuffer_;
+	other->pVertexCount_ = pVertexCount_;
+	
+	other->pIndexBuffer_ = pIndexBuffer_;
+	other->pIndexCount_ = pIndexCount_;
+
+	other->pMaterial_ = pMaterial_->CreateReference();
+
+	return other;
+}
+
+void Mesh::Setup_()
+{
+	SafeDelete(&pVertexCount_);
+	pVertexCount_ = new int();
+
+	SafeDelete(&pIndexCount_);
+	pIndexCount_ = new int();
 }
 
 void Mesh::UpdateVertexResources_(FbxMesh* pMesh, Device* pDevice)
@@ -132,7 +166,7 @@ void Mesh::UpdateVertexResources_(FbxMesh* pMesh, Device* pDevice)
 		pVertexBuffer_->Unmap(0);
 	}
 
-	vertexCount_ = controlPointCount;
+	*pVertexCount_ = controlPointCount;
 }
 
 void Mesh::UpdateIndexResources_(FbxMesh* pMesh, Device* pDevice)
@@ -155,6 +189,6 @@ void Mesh::UpdateIndexResources_(FbxMesh* pMesh, Device* pDevice)
 		pIndexBuffer_->Unmap(0);
 	}
 
-	indexCount_ = indexCount;
+	*pIndexCount_ = indexCount;
 }
 

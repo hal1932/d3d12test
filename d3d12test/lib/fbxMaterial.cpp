@@ -10,7 +10,10 @@ Material::Material() {}
 
 Material::~Material()
 {
-	SafeDelete(&pTexture_);
+	if (!isReference_)
+	{
+		SafeDelete(&pTexture_);
+	}
 }
 
 HRESULT Material::UpdateResources(FbxGeometry* pGeom, Device* pDevice)
@@ -77,3 +80,12 @@ HRESULT Material::UpdateSubresources(CommandList* pCommandList, CommandQueue* pC
 	return pTexture_->UpdateSubresource(pCommandList, pCommandQueue);
 }
 
+Material* Material::CreateReference()
+{
+	auto other = new Material();
+	other->isReference_ = true;
+
+	other->pTexture_ = pTexture_;
+
+	return other;
+}

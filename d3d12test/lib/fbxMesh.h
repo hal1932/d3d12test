@@ -29,23 +29,28 @@ namespace fbx
 		Material* MaterialPtr() { return pMaterial_; }
 
 		Resource* VertexBuffer() { return pVertexBuffer_; }
-		int VertexCount() { return vertexCount_; }
+		int VertexCount() { return *pVertexCount_; }
 
 		Resource* IndexBuffer() { return pIndexBuffer_; }
-		int IndexCount() { return indexCount_; }
+		int IndexCount() { return *pIndexCount_; }
 
 		HRESULT UpdateResources(FbxMesh* pMesh, Device* pDevice);
 		HRESULT UpdateSubresources(CommandList* pCommandList, CommandQueue* pCommandQueue);
 
+		Mesh* CreateReference();
+
 	private:
+		bool isReference_ = false;
+
 		Resource* pVertexBuffer_ = nullptr;
-		int vertexCount_ = 0;
+		int* pVertexCount_ = nullptr;
 
 		Resource* pIndexBuffer_ = nullptr;
-		int indexCount_ = 0;
+		int* pIndexCount_ = nullptr;
 
 		Material* pMaterial_ = nullptr;
 
+		void Setup_();
 		void UpdateVertexResources_(FbxMesh* pMesh, Device* pDevice);
 		void UpdateIndexResources_(FbxMesh* pMesh, Device* pDevice);
 	};

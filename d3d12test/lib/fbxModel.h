@@ -1,4 +1,5 @@
 #pragma once
+#include "common.h"
 #include "Transform.h"
 #include <fbxsdk.h>
 #include <Windows.h>
@@ -32,16 +33,21 @@ namespace fbx
 
 		Transform* TransformPtr() { return &transform_; }
 
+		int MeshCount() { return meshPtrs_.size(); }
 		Mesh* MeshPtr(int index) { return meshPtrs_[index]; }
 
 		HRESULT LoadFromFile(const char* filepath);
 		HRESULT UpdateResources(Device* pDevice);
 		HRESULT UpdateSubresources(CommandList* pCommandList, CommandQueue* pCommandQueue);
 
+		Model* CreateReference();
+
 	private:
 		static FbxManager* spFbxManager_;
 
-		const char* pName_ = nullptr;
+		bool isReference_ = false;
+
+		tstring name_;
 		FbxScene* pScene_ = nullptr;
 		std::vector<Mesh*> meshPtrs_;
 

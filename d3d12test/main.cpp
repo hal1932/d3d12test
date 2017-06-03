@@ -33,15 +33,16 @@ struct Scene
 	ComPtr<ID3D12PipelineState> pPipelineState;
 	float rotateAngle;
 
-	std::unique_ptr<fbx::Model> modelPtr;
+	std::unique_ptr<fbx::Model> modelPtr[100];
 
 	ResourceViewHeap cbSrUavHeap;
 
 	ModelTransform modelTransform;
-	std::unique_ptr<Resource> modelTransformCbvPtr;
-	void* modelTransformBuffer;
 
-	Resource* pTextureSrv;
+	std::unique_ptr<Resource> modelTransformCbvPtr[100];
+	void* modelTransformBuffer[100];
+
+	Resource* pTextureSrv[100];
 
 	D3D12_VIEWPORT viewport;
 	D3D12_RECT scissorRect;
@@ -53,18 +54,27 @@ bool SetupScene(Graphics& g)
 	auto pDevice = g.DevicePtr();
 	auto pNativeDevice = pDevice->NativePtr();
 
-	pScene->modelPtr = std::make_unique<fbx::Model>();
-	pScene->modelPtr->LoadFromFile("assets/test_a.fbx");
-	pScene->modelPtr->UpdateResources(pDevice);
-	pScene->modelPtr->UpdateSubresources(g.GraphicsListPtr(0), g.CommandQueuePtr());
-	
-	pScene->cbSrUavHeap.CreateHeap(pDevice, { HeapDesc::ViewType::CbSrUaView, 2 });
-	pScene->modelTransformCbvPtr = std::unique_ptr<Resource>(
-		pScene->cbSrUavHeap.CreateConstantBufferView({ sizeof(pScene->modelTransform), D3D12_TEXTURE_LAYOUT_ROW_MAJOR }));
+	pScene->modelPtr[0] = std::make_unique<fbx::Model>();
+	pScene->modelPtr[0]->LoadFromFile("assets/test_a.fbx");
+	pScene->modelPtr[0]->UpdateResources(pDevice);
+	pScene->modelPtr[0]->UpdateSubresources(g.GraphicsListPtr(0), g.CommandQueuePtr());
 
+	for (auto i = 1; i < _countof(pScene->modelPtr); ++i)
 	{
-		pScene->pTextureSrv = pScene->cbSrUavHeap.CreateShaderResourceView({ D3D12_SRV_DIMENSION_TEXTURE2D,{ pScene->modelPtr->MeshPtr(0)->MaterialPtr()->TexturePtr() } });
-		pScene->modelTransformBuffer = pScene->modelTransformCbvPtr->Map(0);
+		pScene->modelPtr[i] = std::unique_ptr<fbx::Model>(pScene->modelPtr[0]->CreateReference());
+	}
+	
+	pScene->cbSrUavHeap.CreateHeap(pDevice, { HeapDesc::ViewType::CbSrUaView, _countof(pScene->modelPtr) * 2 });
+
+	for (auto i = 0; i < _countof(pScene->modelPtr); ++i)
+	{
+		pScene->modelTransformCbvPtr[i] = std::unique_ptr<Resource>(
+			pScene->cbSrUavHeap.CreateConstantBufferView({ sizeof(pScene->modelTransform), D3D12_TEXTURE_LAYOUT_ROW_MAJOR }));
+
+		pScene->pTextureSrv[i] = pScene->cbSrUavHeap.CreateShaderResourceView(
+			{ D3D12_SRV_DIMENSION_TEXTURE2D,{ pScene->modelPtr[i]->MeshPtr(0)->MaterialPtr()->TexturePtr() } });
+
+		pScene->modelTransformBuffer[i] = pScene->modelTransformCbvPtr[i]->Map(0);
 	}
 
 	{
@@ -177,23 +187,53 @@ bool SetupScene(Graphics& g)
 	return true;
 }
 
-void Draw(Graphics& g)
+void Calc()
 {
 	pScene->rotateAngle += 0.01f;
 
+	for (auto i = 0; i < 10; ++i)
 	{
-		auto t = pScene->modelPtr->TransformPtr();
-		//t->SetScaling(1.0f, 2.0f, 1.0f);
-		t->SetRotation(0.0f, pScene->rotateAngle, 0.0f);
-		//t->SetTranslation(1.0f, 1.0f, 0.0f);
-		t->UpdateMatrix();
+		for (auto j = 0; j < 10; ++j)
+		{
+			const auto index = i * 10 + j;
+			auto pModel = pScene->modelPtr[index].get();
 
-		pScene->modelTransform.World = t->Matrix();
-		pScene->modelTransform.View = DirectX::XMMatrixLookAtLH({ 0.0f, 0.0f, -5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
-		pScene->modelTransform.Proj = DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4, g.ScreenPtr()->AspectRatio(), 1.0f, 1000.f);
-
-		memcpy(pScene->modelTransformBuffer, &pScene->modelTransform, sizeof(pScene->modelTransform));
+			auto t = pModel->TransformPtr();
+			t->SetScaling(0.1f, 0.1f, 0.1f);
+			t->SetRotation(0.0f, pScene->rotateAngle, 0.0f);
+			t->SetTranslation(-1.0f + i * 0.25f, -1.0f + j * 0.25f, 0.0f);
+			t->UpdateMatrix();
+		}
 	}
+}
+
+void DrawModel(ID3D12GraphicsCommandList* pCmdList, fbx::Model* pModel, Resource* pTexSrv, Resource* pCbv, void* cbuffer)
+{
+	pScene->modelTransform.World = pModel->TransformPtr()->Matrix();
+	memcpy(cbuffer, &pScene->modelTransform, sizeof(pScene->modelTransform));
+
+	pCmdList->SetGraphicsRootDescriptorTable(0, pCbv->GpuDescriptorHandle());
+	pCmdList->SetGraphicsRootDescriptorTable(1, pTexSrv->GpuDescriptorHandle());
+
+	const auto pMesh = pModel->MeshPtr(0);
+	for (auto i = 0; i < pModel->MeshCount(); ++i)
+	{
+		const auto pMesh = pModel->MeshPtr(i);
+
+		auto vbView = pMesh->VertexBuffer()->GetVertexBufferView(sizeof(fbx::Mesh::Vertex));
+		pCmdList->IASetVertexBuffers(0, 1, &vbView);
+
+		auto ibView = pMesh->IndexBuffer()->GetIndexBufferView(DXGI_FORMAT_R16_UINT);
+		pCmdList->IASetIndexBuffer(&ibView);
+
+		pCmdList->DrawIndexedInstanced(pMesh->IndexCount(), 1, 0, 0, 0);
+	}
+}
+
+void Draw(Graphics& g)
+{
+	pScene->modelTransform.View = DirectX::XMMatrixLookAtLH({ 0.0f, 0.0f, -5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
+	pScene->modelTransform.Proj = DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4, g.ScreenPtr()->AspectRatio(), 1.0f, 1000.f);
 
 	g.ClearCommand();
 
@@ -207,9 +247,6 @@ void Draw(Graphics& g)
 		pNativeGraphicsList->SetDescriptorHeaps(1, &heap);
 
 		pNativeGraphicsList->SetGraphicsRootSignature(pScene->pRootSignature.Get());
-
-		pNativeGraphicsList->SetGraphicsRootDescriptorTable(0, pScene->modelTransformCbvPtr->GpuDescriptorHandle());
-		pNativeGraphicsList->SetGraphicsRootDescriptorTable(1, pScene->pTextureSrv->GpuDescriptorHandle());
 	}
 
 	const auto& screen = g.ScreenPtr()->Desc();
@@ -237,14 +274,15 @@ void Draw(Graphics& g)
 
 	pNativeGraphicsList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	const auto& pMesh = pScene->modelPtr->MeshPtr(0);
-	auto vbView = pMesh->VertexBuffer()->GetVertexBufferView(sizeof(fbx::Mesh::Vertex));
-	pNativeGraphicsList->IASetVertexBuffers(0, 1, &vbView);
+	for (auto i = 0; i < _countof(pScene->modelPtr); ++i)
+	{
+		auto pModel = pScene->modelPtr[i].get();
+		auto pTexSrv = pScene->pTextureSrv[i];
+		auto pCbv = pScene->modelTransformCbvPtr[i].get();
+		auto cbuffer = pScene->modelTransformBuffer[i];
 
-	auto ibView = pMesh->IndexBuffer()->GetIndexBufferView(DXGI_FORMAT_R16_UINT);
-	pNativeGraphicsList->IASetIndexBuffer(&ibView);
-
-	pNativeGraphicsList->DrawIndexedInstanced(pMesh->IndexCount(), 1, 0, 0, 0);
+		DrawModel(pNativeGraphicsList, pModel, pTexSrv, pCbv, cbuffer);
+	}
 
 	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
@@ -260,8 +298,15 @@ void Draw(Graphics& g)
 
 void ShutdownScene()
 {
-	pScene->modelPtr.reset();
-	pScene->modelTransformCbvPtr->Unmap(0);
+	for (auto& modelPtr : pScene->modelPtr)
+	{
+		modelPtr.reset();
+	}
+
+	for (auto i = 0; i < _countof(pScene->modelTransformCbvPtr); ++i)
+	{
+		pScene->modelTransformCbvPtr[i]->Unmap(0);
+	}
 }
 
 int MainImpl(int, char**)
@@ -303,6 +348,7 @@ int MainImpl(int, char**)
 
 	window.MessageLoop([&graphics]()
 	{
+		Calc();
 		Draw(graphics);
 	});
 

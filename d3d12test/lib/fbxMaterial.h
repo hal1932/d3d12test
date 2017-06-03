@@ -20,7 +20,10 @@ namespace fbx
 		HRESULT UpdateResources(FbxGeometry* pGeom, Device* pDevice);
 		HRESULT UpdateSubresources(CommandList* pCommandList, CommandQueue* pCommandQueue);
 
+		Material* CreateReference();
+
 	private:
+		bool isReference_ = false;
 		Texture* pTexture_ = nullptr;
 	};
 
