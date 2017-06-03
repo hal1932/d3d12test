@@ -45,8 +45,6 @@ namespace fbx
 		FbxScene* pScene_ = nullptr;
 		std::vector<Mesh*> meshPtrs_;
 
-		Texture* pTexture_ = nullptr;
-
 		Transform transform_;
 
 		HRESULT UpdateResourcesRec_(FbxNode* pNode, Device* pDevice);

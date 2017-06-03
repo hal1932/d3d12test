@@ -1,4 +1,3 @@
-#define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>
 #include <crtdbg.h>
 
@@ -47,25 +46,25 @@ struct Scene
 	D3D12_VIEWPORT viewport;
 	D3D12_RECT scissorRect;
 };
-Scene scene;
+Scene* pScene = nullptr;
 
 bool SetupScene(Graphics& g)
 {
 	auto pDevice = g.DevicePtr();
 	auto pNativeDevice = pDevice->NativePtr();
 
-	scene.modelPtr = std::make_unique<fbx::Model>();
-	scene.modelPtr->LoadFromFile("assets/test_a.fbx");
-	scene.modelPtr->UpdateResources(pDevice);
-	scene.modelPtr->UpdateSubresources(g.GraphicsListPtr(0), g.CommandQueuePtr());
+	pScene->modelPtr = std::make_unique<fbx::Model>();
+	pScene->modelPtr->LoadFromFile("assets/test_a.fbx");
+	pScene->modelPtr->UpdateResources(pDevice);
+	pScene->modelPtr->UpdateSubresources(g.GraphicsListPtr(0), g.CommandQueuePtr());
 	
-	scene.cbSrUavHeap.CreateHeap(pDevice, { HeapDesc::ViewType::CbSrUaView, 2 });
-	scene.modelTransformCbvPtr = std::unique_ptr<Resource>(
-		scene.cbSrUavHeap.CreateConstantBufferView({ sizeof(scene.modelTransform), D3D12_TEXTURE_LAYOUT_ROW_MAJOR }));
+	pScene->cbSrUavHeap.CreateHeap(pDevice, { HeapDesc::ViewType::CbSrUaView, 2 });
+	pScene->modelTransformCbvPtr = std::unique_ptr<Resource>(
+		pScene->cbSrUavHeap.CreateConstantBufferView({ sizeof(pScene->modelTransform), D3D12_TEXTURE_LAYOUT_ROW_MAJOR }));
 
 	{
-		scene.pTextureSrv = scene.cbSrUavHeap.CreateShaderResourceView({ D3D12_SRV_DIMENSION_TEXTURE2D,{ scene.modelPtr->MeshPtr(0)->MaterialPtr()->TexturePtr() } });
-		scene.modelTransformBuffer = scene.modelTransformCbvPtr->Map(0);
+		pScene->pTextureSrv = pScene->cbSrUavHeap.CreateShaderResourceView({ D3D12_SRV_DIMENSION_TEXTURE2D,{ pScene->modelPtr->MeshPtr(0)->MaterialPtr()->TexturePtr() } });
+		pScene->modelTransformBuffer = pScene->modelTransformCbvPtr->Map(0);
 	}
 
 	{
@@ -120,7 +119,7 @@ bool SetupScene(Graphics& g)
 
 		ThrowIfFailed(D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &pSignature, &pError));
 
-		ThrowIfFailed(pNativeDevice->CreateRootSignature(0, pSignature->GetBufferPointer(), pSignature->GetBufferSize(), IID_PPV_ARGS(&scene.pRootSignature)));
+		ThrowIfFailed(pNativeDevice->CreateRootSignature(0, pSignature->GetBufferPointer(), pSignature->GetBufferSize(), IID_PPV_ARGS(&pScene->pRootSignature)));
 	}
 
 	{
@@ -154,7 +153,7 @@ bool SetupScene(Graphics& g)
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {};
 		desc.InputLayout = vs.NativeInputLayout();
-		desc.pRootSignature = scene.pRootSignature.Get();
+		desc.pRootSignature = pScene->pRootSignature.Get();
 		desc.VS = vs.NativeByteCode();
 		desc.PS = ps.NativeByteCode();
 		desc.RasterizerState = descRS;
@@ -170,30 +169,30 @@ bool SetupScene(Graphics& g)
 		desc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 		desc.SampleDesc.Count = 1;
 
-		ThrowIfFailed(pNativeDevice->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&scene.pPipelineState)));
+		ThrowIfFailed(pNativeDevice->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&pScene->pPipelineState)));
 	}
 
-	scene.rotateAngle = 0.f;
+	pScene->rotateAngle = 0.f;
 
 	return true;
 }
 
 void Draw(Graphics& g)
 {
-	scene.rotateAngle += 0.01f;
+	pScene->rotateAngle += 0.01f;
 
 	{
-		auto t = scene.modelPtr->TransformPtr();
+		auto t = pScene->modelPtr->TransformPtr();
 		//t->SetScaling(1.0f, 2.0f, 1.0f);
-		t->SetRotation(0.0f, scene.rotateAngle, 0.0f);
+		t->SetRotation(0.0f, pScene->rotateAngle, 0.0f);
 		//t->SetTranslation(1.0f, 1.0f, 0.0f);
 		t->UpdateMatrix();
 
-		scene.modelTransform.World = t->Matrix();
-		scene.modelTransform.View = DirectX::XMMatrixLookAtLH({ 0.0f, 0.0f, -5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
-		scene.modelTransform.Proj = DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4, g.ScreenPtr()->AspectRatio(), 1.0f, 1000.f);
+		pScene->modelTransform.World = t->Matrix();
+		pScene->modelTransform.View = DirectX::XMMatrixLookAtLH({ 0.0f, 0.0f, -5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
+		pScene->modelTransform.Proj = DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4, g.ScreenPtr()->AspectRatio(), 1.0f, 1000.f);
 
-		memcpy(scene.modelTransformBuffer, &scene.modelTransform, sizeof(scene.modelTransform));
+		memcpy(pScene->modelTransformBuffer, &pScene->modelTransform, sizeof(pScene->modelTransform));
 	}
 
 	g.ClearCommand();
@@ -201,24 +200,24 @@ void Draw(Graphics& g)
 	auto pGraphicsList = g.GraphicsListPtr(0);
 	auto pNativeGraphicsList = pGraphicsList->AsGraphicsList();
 
-	pGraphicsList->Open(scene.pPipelineState.Get());
+	pGraphicsList->Open(pScene->pPipelineState.Get());
 
 	{
-		auto heap = scene.cbSrUavHeap.NativePtr();
+		auto heap = pScene->cbSrUavHeap.NativePtr();
 		pNativeGraphicsList->SetDescriptorHeaps(1, &heap);
 
-		pNativeGraphicsList->SetGraphicsRootSignature(scene.pRootSignature.Get());
+		pNativeGraphicsList->SetGraphicsRootSignature(pScene->pRootSignature.Get());
 
-		pNativeGraphicsList->SetGraphicsRootDescriptorTable(0, scene.modelTransformCbvPtr->GpuDescriptorHandle());
-		pNativeGraphicsList->SetGraphicsRootDescriptorTable(1, scene.pTextureSrv->GpuDescriptorHandle());
+		pNativeGraphicsList->SetGraphicsRootDescriptorTable(0, pScene->modelTransformCbvPtr->GpuDescriptorHandle());
+		pNativeGraphicsList->SetGraphicsRootDescriptorTable(1, pScene->pTextureSrv->GpuDescriptorHandle());
 	}
 
 	const auto& screen = g.ScreenPtr()->Desc();
-	scene.viewport = { 0.0f, 0.0f, (float)screen.Width, (float)screen.Height, 0.0f, 1.0f };
-	pNativeGraphicsList->RSSetViewports(1, &scene.viewport);
+	pScene->viewport = { 0.0f, 0.0f, (float)screen.Width, (float)screen.Height, 0.0f, 1.0f };
+	pNativeGraphicsList->RSSetViewports(1, &pScene->viewport);
 
-	scene.scissorRect = { 0, 0, screen.Width, screen.Height };
-	pNativeGraphicsList->RSSetScissorRects(1, &scene.scissorRect);
+	pScene->scissorRect = { 0, 0, screen.Width, screen.Height };
+	pNativeGraphicsList->RSSetScissorRects(1, &pScene->scissorRect);
 
 	D3D12_RESOURCE_BARRIER barrier = {};
 	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -238,7 +237,7 @@ void Draw(Graphics& g)
 
 	pNativeGraphicsList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	const auto& pMesh = scene.modelPtr->MeshPtr(0);
+	const auto& pMesh = pScene->modelPtr->MeshPtr(0);
 	auto vbView = pMesh->VertexBuffer()->GetVertexBufferView(sizeof(fbx::Mesh::Vertex));
 	pNativeGraphicsList->IASetVertexBuffers(0, 1, &vbView);
 
@@ -261,8 +260,8 @@ void Draw(Graphics& g)
 
 void ShutdownScene()
 {
-	scene.modelPtr.reset();
-	scene.modelTransformCbvPtr->Unmap(0);
+	pScene->modelPtr.reset();
+	pScene->modelTransformCbvPtr->Unmap(0);
 }
 
 int MainImpl(int, char**)
@@ -299,6 +298,7 @@ int MainImpl(int, char**)
 
 	graphics.ResizeScreen(desc);
 
+	pScene = new Scene();
 	SetupScene(graphics);
 
 	window.MessageLoop([&graphics]()
@@ -307,7 +307,10 @@ int MainImpl(int, char**)
 	});
 
 	graphics.WaitForCommandExecution();
+
 	ShutdownScene();
+	SafeDelete(&pScene);
+
 	window.Close();
 
 	fbx::Model::Shutdown();

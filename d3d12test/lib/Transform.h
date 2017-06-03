@@ -1,5 +1,7 @@
 #pragma once
 #include <DirectXMath.h>
+#include <utility>
+#include <cstring>
 
 class Transform
 {
@@ -76,6 +78,18 @@ public:
 		m.r[3].m128_f32[1] = t[1];
 		m.r[3].m128_f32[2] = t[2];
 		m.r[3].m128_f32[3] = 1.0f;
+	}
+
+	Transform Clone()
+	{
+		Transform other;
+
+		other.matrix_ = matrix_;
+		memcpy(other.scale_, scale_, sizeof(scale_));
+		memcpy(other.rotation_, rotation_, sizeof(rotation_));
+		memcpy(other.translation_, translation_, sizeof(translation_));
+
+		return std::move(other);
 	}
 
 private:

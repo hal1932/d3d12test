@@ -88,6 +88,7 @@
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>D:\Program Files\Autodesk\FBX\FBX SDK\2018.1.1\include;D:\yuta\Desktop\DirectXTex-master\DirectXTex</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <PreprocessorDefinitions>_CRTDBG_MAP_ALLOC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <EntryPointSymbol>

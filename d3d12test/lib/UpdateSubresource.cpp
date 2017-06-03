@@ -12,15 +12,15 @@ HRESULT UpdateSubresourcesImpl_(
 	const D3D12_SUBRESOURCE_DATA* pData,
 	ID3D12GraphicsCommandList* pCommandList,
 	Resource* pDestResource, const D3D12_RESOURCE_DESC& destResourceDesc,
-	ID3D12Resource* pIntermediate, const D3D12_RESOURCE_DESC& intermediateResourceDesc,
+	ID3D12Resource* pIntermediate,
 	UINT64 offset, UINT start, UINT count);
 
 HRESULT UpdateSubresourcesImpl_(
 	const D3D12_SUBRESOURCE_DATA* pData,
 	ID3D12GraphicsCommandList* pCommandList,
 	ID3D12Resource* pDestResource, const D3D12_RESOURCE_DESC& destResourceDesc,
-	ID3D12Resource* pIntermediate, const D3D12_RESOURCE_DESC& intermidiateResourceDesc,
-	UINT start, UINT count, UINT64 requiredSize,
+	ID3D12Resource* pIntermediate,
+	UINT start, UINT count,
 	D3D12_PLACED_SUBRESOURCE_FOOTPRINT* pLayouts, UINT* pRowCounts, UINT64* pRowSizesInBytes);
 
 void CopySubresource_(const D3D12_MEMCPY_DEST* pDest, const D3D12_SUBRESOURCE_DATA* pSource, UINT64 rowSizeInBytes, UINT rowCount, UINT sliceCount);
@@ -66,7 +66,7 @@ HRESULT UpdateSubresources(
 		pData,
 		pNativeCommandList,
 		pDestinationResource, destResourceDesc,
-		pIntermediateResource->NativePtr(), pIntermediateResource->NativePtr()->GetDesc(),
+		pIntermediateResource->NativePtr(),
 		0, firstSubresource, subresourceCount);
 	if (FAILED(result))
 	{
@@ -103,7 +103,7 @@ HRESULT UpdateSubresourcesImpl_(
 	const D3D12_SUBRESOURCE_DATA* pData,
 	ID3D12GraphicsCommandList* pCommandList,
 	Resource* pDestResource, const D3D12_RESOURCE_DESC& destResourceDesc,
-	ID3D12Resource* pIntermediate, const D3D12_RESOURCE_DESC& intermediateResourceDesc,
+	ID3D12Resource* pIntermediate,
 	UINT64 offset, UINT start, UINT count)
 {
 	HRESULT result;
@@ -138,8 +138,8 @@ HRESULT UpdateSubresourcesImpl_(
 		pData,
 		pCommandList,
 		pDestResource->NativePtr(), destResourceDesc,
-		pIntermediate, intermediateResourceDesc,
-		start, count, requiredSize,
+		pIntermediate,
+		start, count,
 		pLayouts, pRowCounts, pRowSizesInBytes);
 
 	HeapFree(GetProcessHeap(), 0, buffer);
@@ -151,8 +151,8 @@ HRESULT UpdateSubresourcesImpl_(
 	const D3D12_SUBRESOURCE_DATA* pData,
 	ID3D12GraphicsCommandList* pCommandList,
 	ID3D12Resource* pDestResource, const D3D12_RESOURCE_DESC& destResourceDesc,
-	ID3D12Resource* pIntermediate, const D3D12_RESOURCE_DESC& intermidiateResourceDesc,
-	UINT start, UINT count, UINT64 requiredSize,
+	ID3D12Resource* pIntermediate,
+	UINT start, UINT count,
 	D3D12_PLACED_SUBRESOURCE_FOOTPRINT* pLayouts, UINT* pRowCounts, UINT64* pRowSizesInBytes)
 {
 	HRESULT result;

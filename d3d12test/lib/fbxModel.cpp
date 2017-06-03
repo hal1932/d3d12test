@@ -33,7 +33,6 @@ Model::Model() {}
 
 Model::~Model()
 {
-	SafeDelete(&pTexture_);
 	SafeDeleteSequence(&meshPtrs_);
 	SafeDestroy(&pScene_);
 }
