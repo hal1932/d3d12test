@@ -69,7 +69,7 @@ void ScreenContext::UpdateFrameIndex()
 
 void ScreenContext::SwapBuffers()
 {
-	pSwapChain_->Present(1, 0);
+	pSwapChain_->Present(0, 0);
 }
 
 HRESULT ScreenContext::GetBackBufferView(UINT index, ID3D12Resource** ppView)

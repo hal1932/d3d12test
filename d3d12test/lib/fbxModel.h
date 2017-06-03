@@ -6,11 +6,7 @@
 #include <DirectXMath.h>
 #include <vector>
 
-#ifdef _DEBUG
-#	pragma comment(lib, "libfbxsdk-md.lib")
-#else
-#	pragma comment(lib, "libfbxsdk-mt.lib")
-#endif
+#pragma comment(lib, "libfbxsdk-md.lib")
 
 class Device;
 class Resource;
@@ -33,7 +29,7 @@ namespace fbx
 
 		Transform* TransformPtr() { return &transform_; }
 
-		int MeshCount() { return meshPtrs_.size(); }
+		int MeshCount() { return static_cast<int>(meshPtrs_.size()); }
 		Mesh* MeshPtr(int index) { return meshPtrs_[index]; }
 
 		HRESULT LoadFromFile(const char* filepath);

@@ -154,17 +154,19 @@
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="GameScene.h" />
     <ClInclude Include="Graphics.h" />
     <ClInclude Include="lib\CommandContainer.h" />
     <ClInclude Include="lib\CommandList.h" />
     <ClInclude Include="lib\CommandQueue.h" />
     <ClInclude Include="lib\common.h" />
+    <ClInclude Include="lib\CpuStopwatch.h" />
     <ClInclude Include="lib\Device.h" />
     <ClInclude Include="lib\fbxMaterial.h" />
     <ClInclude Include="lib\fbxMesh.h" />
     <ClInclude Include="lib\fbxModel.h" />
+    <ClInclude Include="lib\FrameCounter.h" />
     <ClInclude Include="lib\GpuFence.h" />
+    <ClInclude Include="lib\GpuStopwatch.h" />
     <ClInclude Include="lib\lib.h" />
     <ClInclude Include="lib\Model.h" />
     <ClInclude Include="lib\Resource.h" />
@@ -178,7 +180,6 @@
     <ClInclude Include="lib\WindowEvent.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="GameScene.cpp" />
     <ClCompile Include="Graphics.cpp" />
     <ClCompile Include="lib\CommandContainer.cpp" />
     <ClCompile Include="lib\CommandList.cpp" />

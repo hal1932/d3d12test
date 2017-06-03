@@ -33,16 +33,16 @@ struct Scene
 	ComPtr<ID3D12PipelineState> pPipelineState;
 	float rotateAngle;
 
-	std::unique_ptr<fbx::Model> modelPtr[100];
+	std::unique_ptr<fbx::Model> modelPtr[1000];
 
 	ResourceViewHeap cbSrUavHeap;
 
 	ModelTransform modelTransform;
 
-	std::unique_ptr<Resource> modelTransformCbvPtr[100];
-	void* modelTransformBuffer[100];
+	std::unique_ptr<Resource> modelTransformCbvPtr[1000];
+	void* modelTransformBuffer[1000];
 
-	Resource* pTextureSrv[100];
+	Resource* pTextureSrv[1000];
 
 	D3D12_VIEWPORT viewport;
 	D3D12_RECT scissorRect;
@@ -195,14 +195,17 @@ void Calc()
 	{
 		for (auto j = 0; j < 10; ++j)
 		{
-			const auto index = i * 10 + j;
-			auto pModel = pScene->modelPtr[index].get();
+			for (auto k = 0; k < 10; ++k)
+			{
+				const auto index = i * 100 + j * 10 + k;
+				auto pModel = pScene->modelPtr[index].get();
 
-			auto t = pModel->TransformPtr();
-			t->SetScaling(0.1f, 0.1f, 0.1f);
-			t->SetRotation(0.0f, pScene->rotateAngle, 0.0f);
-			t->SetTranslation(-1.0f + i * 0.25f, -1.0f + j * 0.25f, 0.0f);
-			t->UpdateMatrix();
+				auto t = pModel->TransformPtr();
+				t->SetScaling(0.1f, 0.1f, 0.1f);
+				t->SetRotation(0.0f, pScene->rotateAngle, 0.0f);
+				t->SetTranslation(-1.0f + i * 0.3f, -1.0f + j * 0.3f, -1.0f + k * 0.3f);
+				t->UpdateMatrix();
+			}
 		}
 	}
 }
@@ -230,9 +233,9 @@ void DrawModel(ID3D12GraphicsCommandList* pCmdList, fbx::Model* pModel, Resource
 	}
 }
 
-void Draw(Graphics& g)
+void Draw(Graphics& g, GpuStopwatch* pStopwatch)
 {
-	pScene->modelTransform.View = DirectX::XMMatrixLookAtLH({ 0.0f, 0.0f, -5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
+	pScene->modelTransform.View = DirectX::XMMatrixLookAtLH({ 3.0f, 3.0f, -5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
 	pScene->modelTransform.Proj = DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4, g.ScreenPtr()->AspectRatio(), 1.0f, 1000.f);
 
 	g.ClearCommand();
@@ -241,6 +244,8 @@ void Draw(Graphics& g)
 	auto pNativeGraphicsList = pGraphicsList->AsGraphicsList();
 
 	pGraphicsList->Open(pScene->pPipelineState.Get());
+
+	pStopwatch->Start(g.CommandQueuePtr()->NativePtr(), pNativeGraphicsList);
 
 	{
 		auto heap = pScene->cbSrUavHeap.NativePtr();
@@ -287,6 +292,8 @@ void Draw(Graphics& g)
 	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
 	pNativeGraphicsList->ResourceBarrier(1, &barrier);
+
+	pStopwatch->Stop();
 
 	pGraphicsList->Close();
 
@@ -346,10 +353,32 @@ int MainImpl(int, char**)
 	pScene = new Scene();
 	SetupScene(graphics);
 
-	window.MessageLoop([&graphics]()
+	CpuStopwatch sw;
+	GpuStopwatch gsw;
+	gsw.Create(graphics.DevicePtr()->NativePtr(), 1);
+
+	FrameCounter counter(&sw, &gsw);
+
+	window.MessageLoop([&graphics, &counter]()
 	{
+		counter.CpuWatchPtr()->Start();
+
 		Calc();
-		Draw(graphics);
+		Draw(graphics, counter.GpuWatchPtr());
+
+		counter.CpuWatchPtr()->Stop();
+		counter.NextFrame();
+
+		if (counter.CpuTime() > 1000.0)
+		{
+			const auto frames = counter.FrameCount();
+			printf(
+				"fps: %d, CPU: %.4f %%, GPU: %.4f %%\n",
+				counter.FrameCount(),
+				counter.CpuUtilization(60),
+				counter.GpuUtilization(60));
+			counter.Reset();
+		}
 	});
 
 	graphics.WaitForCommandExecution();

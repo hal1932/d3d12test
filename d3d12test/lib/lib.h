@@ -14,6 +14,9 @@
 #include "fbxModel.h"
 #include "fbxMesh.h"
 #include "fbxMaterial.h"
+#include "CpuStopwatch.h"
+#include "GpuStopwatch.h"
+#include "FrameCounter.h"
 
 #pragma comment(lib, "D3d12.lib")
 #pragma comment(lib, "dxgi.lib")
