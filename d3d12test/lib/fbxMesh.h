@@ -27,6 +27,7 @@ namespace fbx
 		~Mesh();
 
 		Material* MaterialPtr() { return pMaterial_; }
+		const Material* MaterialPtr() const { return pMaterial_; }
 
 		Resource* VertexBuffer() { return pVertexBuffer_; }
 		int VertexCount() { return *pVertexCount_; }

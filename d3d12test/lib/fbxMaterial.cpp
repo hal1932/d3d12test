@@ -30,6 +30,8 @@ HRESULT Material::UpdateResources(FbxGeometry* pGeom, Device* pDevice)
 
 		std::cout << pMaterial->GetName() << " " << pMaterial->GetClassId().GetName() << std::endl;
 
+		name_ = pMaterial->GetName();
+
 		// ‚Æ‚è‚ ‚¦‚¸ƒ‰ƒ“ƒo[ƒg‚¾‚¯‘Î‰ž
 		if (pMaterial->GetClassId().Is(FbxSurfaceLambert::ClassId))
 		{
@@ -85,6 +87,7 @@ Material* Material::CreateReference()
 	auto other = new Material();
 	other->isReference_ = true;
 
+	other->name_ = name_;
 	other->pTexture_ = pTexture_;
 
 	return other;

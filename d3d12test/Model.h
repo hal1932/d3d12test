@@ -23,6 +23,7 @@ public:
 
 	int BufferCount() { return 2; }
 	Transform* TransformPtr() { return modelPtr_->TransformPtr(); }
+	const fbx::Model& FbxModel() { return *modelPtr_; }
 
 	void Setup(Device* pDevice, const char* filepath)
 	{
@@ -52,6 +53,11 @@ public:
 	void UpdateSubresources(CommandList* pCmdList, CommandQueue* pCmdQueue)
 	{
 		modelPtr_->UpdateSubresources(pCmdList, pCmdQueue);
+	}
+
+	void SetShaderHash(ulonglong hash)
+	{
+		shaderHash_ = hash;
 	}
 
 	void SetTransform(const ModelTransform& transform)
@@ -87,5 +93,7 @@ private:
 	std::unique_ptr<Resource> transformCbvPtr_;
 	void* transformPtr_;
 	Resource* pTextureSrv_;
+
+	ulonglong shaderHash_;
 };
 

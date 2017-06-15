@@ -15,6 +15,23 @@ typedef unsigned long long ulonglong;
 
 typedef std::basic_string<TCHAR> tstring;
 
+inline wchar_t* tstring_to_wcs(const tstring& str)
+{
+	auto result = new wchar_t[str.length() + 1];
+
+	size_t len;
+
+#ifdef UNICODE
+	wcscpy_s(&len, result, str.length() + 1, str.c_str());
+#else
+	mbstowcs_s(&len, result, str.length() + 1, str.c_str(), str.length());
+#endif
+
+	result[str.length()] = '\0';
+
+	return result;
+}
+
 template<class T>
 inline void SafeRelease(T** ppObj)
 {

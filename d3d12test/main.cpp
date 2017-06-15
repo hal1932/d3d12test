@@ -34,6 +34,7 @@ struct Scene
 	ModelTransform modelTransform;
 
 	Camera camera;
+	ShaderManager shaders;
 
 	D3D12_VIEWPORT viewport;
 	D3D12_RECT scissorRect;
@@ -117,12 +118,11 @@ bool SetupScene(Graphics& g)
 	}
 
 	{
-		Shader vs;
-		vs.CreateFromSourceFile({ L"assets/SimpleVS.hlsl", _T("VSFunc"), _T("vs_5_0") });
-		vs.CreateInputLayout();
-
-		Shader ps;
-		ps.CreateFromSourceFile({ L"assets/SimplePS.hlsl", _T("PSFunc"), _T("ps_5_0") });
+		for (auto& model : pScene->models)
+		{
+			const auto hash = pScene->shaders.LoadFromModelMaterials(model.FbxModel());
+			model.SetShaderHash(hash);
+		}
 
 		D3D12_RASTERIZER_DESC descRS = {};
 		descRS.FillMode = D3D12_FILL_MODE_SOLID;
@@ -146,10 +146,10 @@ bool SetupScene(Graphics& g)
 		}
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {};
-		desc.InputLayout = vs.NativeInputLayout();
+		desc.InputLayout = pScene->shaders.InputLayout("Simple");
 		desc.pRootSignature = pScene->pRootSignature.Get();
-		desc.VS = vs.NativeByteCode();
-		desc.PS = ps.NativeByteCode();
+		desc.VS = pScene->shaders.VertexShader("Simple");
+		desc.PS = pScene->shaders.PixelShader("Simple");
 		desc.RasterizerState = descRS;
 		desc.BlendState = descBS;
 		desc.DepthStencilState.DepthEnable = TRUE;

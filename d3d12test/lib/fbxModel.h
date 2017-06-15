@@ -30,7 +30,10 @@ namespace fbx
 		Transform* TransformPtr() { return &transform_; }
 
 		int MeshCount() { return static_cast<int>(meshPtrs_.size()); }
+		int MeshCount() const { return static_cast<int>(meshPtrs_.size()); }
+
 		Mesh* MeshPtr(int index) { return meshPtrs_[index]; }
+		const Mesh* MeshPtr(int index) const { return meshPtrs_[index]; }
 
 		HRESULT LoadFromFile(const char* filepath);
 		HRESULT UpdateResources(Device* pDevice);
