@@ -160,6 +160,7 @@
     <ClInclude Include="lib\CommandQueue.h" />
     <ClInclude Include="lib\common.h" />
     <ClInclude Include="lib\CpuStopwatch.h" />
+    <ClInclude Include="lib\CpuStopwatchBatch.h" />
     <ClInclude Include="lib\Device.h" />
     <ClInclude Include="lib\fbxMaterial.h" />
     <ClInclude Include="lib\fbxMesh.h" />

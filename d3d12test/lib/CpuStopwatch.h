@@ -10,6 +10,9 @@ public:
 		QueryPerformanceFrequency(&frequency_);
 	}
 
+	void SetName(const tstring& name) { name_ = name; }
+	const tstring& Name() { return name_; }
+
 	void Start()
 	{
 		end_.QuadPart = 0ULL;
@@ -33,6 +36,7 @@ public:
 	}
 
 private:
+	tstring name_;
 	LARGE_INTEGER begin_;
 	LARGE_INTEGER end_;
 	LARGE_INTEGER frequency_;

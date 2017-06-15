@@ -187,8 +187,12 @@ bool SetupScene(Graphics& g)
 	return true;
 }
 
+CpuStopwatchBatch sw;
+
 void Calc()
 {
+	sw.Start(100, "calc");
+
 	pScene->rotateAngle += 0.01f;
 
 	for (auto i = 0; i < 10; ++i)
@@ -208,99 +212,193 @@ void Calc()
 			}
 		}
 	}
+
+	sw.Stop(100);
 }
 
 void DrawModel(ID3D12GraphicsCommandList* pCmdList, fbx::Model* pModel, Resource* pTexSrv, Resource* pCbv, void* cbuffer)
 {
-	pScene->modelTransform.World = pModel->TransformPtr()->Matrix();
-	memcpy(cbuffer, &pScene->modelTransform, sizeof(pScene->modelTransform));
+	sw.Start(300, "model");
 
-	pCmdList->SetGraphicsRootDescriptorTable(0, pCbv->GpuDescriptorHandle());
-	pCmdList->SetGraphicsRootDescriptorTable(1, pTexSrv->GpuDescriptorHandle());
-
-	const auto pMesh = pModel->MeshPtr(0);
-	for (auto i = 0; i < pModel->MeshCount(); ++i)
+	sw.Start(301, "model-cbuffer");
 	{
-		const auto pMesh = pModel->MeshPtr(i);
-
-		auto vbView = pMesh->VertexBuffer()->GetVertexBufferView(sizeof(fbx::Mesh::Vertex));
-		pCmdList->IASetVertexBuffers(0, 1, &vbView);
-
-		auto ibView = pMesh->IndexBuffer()->GetIndexBufferView(DXGI_FORMAT_R16_UINT);
-		pCmdList->IASetIndexBuffer(&ibView);
-
-		pCmdList->DrawIndexedInstanced(pMesh->IndexCount(), 1, 0, 0, 0);
+		pScene->modelTransform.World = pModel->TransformPtr()->Matrix();
+		memcpy(cbuffer, &pScene->modelTransform, sizeof(pScene->modelTransform));
 	}
+	sw.Stop(301);
+
+	sw.Start(302, "model-descriptor");
+	{
+		pCmdList->SetGraphicsRootDescriptorTable(0, pCbv->GpuDescriptorHandle());
+		pCmdList->SetGraphicsRootDescriptorTable(1, pTexSrv->GpuDescriptorHandle());
+	}
+	sw.Stop(302);
+
+	sw.Start(303, "model-draw");
+	{
+		const auto pMesh = pModel->MeshPtr(0);
+		for (auto i = 0; i < pModel->MeshCount(); ++i)
+		{
+			const auto pMesh = pModel->MeshPtr(i);
+
+			sw.Start(401, "model-draw-vtx");
+			{
+				auto vbView = pMesh->VertexBuffer()->GetVertexBufferView(sizeof(fbx::Mesh::Vertex));
+				pCmdList->IASetVertexBuffers(0, 1, &vbView);
+			}
+			sw.Stop(401);
+
+			sw.Start(402, "model-draw-idx");
+			{
+				auto ibView = pMesh->IndexBuffer()->GetIndexBufferView(DXGI_FORMAT_R16_UINT);
+				pCmdList->IASetIndexBuffer(&ibView);
+			}
+			sw.Stop(402);
+
+			sw.Start(403, "model-draw-draw");
+			{
+				pCmdList->DrawIndexedInstanced(pMesh->IndexCount(), 1, 0, 0, 0);
+			}
+			sw.Stop(403);
+		}
+	}
+	sw.Stop(303);
+
+	sw.Stop(300);
 }
 
 void Draw(Graphics& g, GpuStopwatch* pStopwatch)
 {
-	pScene->modelTransform.View = DirectX::XMMatrixLookAtLH({ 3.0f, 3.0f, -5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
-	pScene->modelTransform.Proj = DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4, g.ScreenPtr()->AspectRatio(), 1.0f, 1000.f);
+	sw.Start(200, "all");
 
-	g.ClearCommand();
+	sw.Start(201, "transform");
+	{
+		pScene->modelTransform.View = DirectX::XMMatrixLookAtLH({ 3.0f, 3.0f, -5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
+		pScene->modelTransform.Proj = DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4, g.ScreenPtr()->AspectRatio(), 1.0f, 1000.f);
+	}
+	sw.Stop(201);
+
+	sw.Start(202, "clear_cmds");
+	{
+		g.ClearCommand();
+	}
+	sw.Stop(202);
 
 	auto pGraphicsList = g.GraphicsListPtr(0);
 	auto pNativeGraphicsList = pGraphicsList->AsGraphicsList();
 
-	pGraphicsList->Open(pScene->pPipelineState.Get());
+	sw.Start(203, "open");
+	{
+		pGraphicsList->Open(pScene->pPipelineState.Get());
+	}
+	sw.Stop(203);
 
 	pStopwatch->Start(g.CommandQueuePtr()->NativePtr(), pNativeGraphicsList);
 
+	sw.Start(204, "cbv_descriptor");
 	{
 		auto heap = pScene->cbSrUavHeap.NativePtr();
 		pNativeGraphicsList->SetDescriptorHeaps(1, &heap);
+	}
+	sw.Stop(204);
 
+	sw.Start(205, "rootsig");
+	{
 		pNativeGraphicsList->SetGraphicsRootSignature(pScene->pRootSignature.Get());
 	}
+	sw.Stop(205);
 
-	const auto& screen = g.ScreenPtr()->Desc();
-	pScene->viewport = { 0.0f, 0.0f, (float)screen.Width, (float)screen.Height, 0.0f, 1.0f };
-	pNativeGraphicsList->RSSetViewports(1, &pScene->viewport);
+	sw.Start(206, "RS");
+	{
+		const auto& screen = g.ScreenPtr()->Desc();
+		pScene->viewport = { 0.0f, 0.0f, (float)screen.Width, (float)screen.Height, 0.0f, 1.0f };
+		pNativeGraphicsList->RSSetViewports(1, &pScene->viewport);
 
-	pScene->scissorRect = { 0, 0, screen.Width, screen.Height };
-	pNativeGraphicsList->RSSetScissorRects(1, &pScene->scissorRect);
+		pScene->scissorRect = { 0, 0, screen.Width, screen.Height };
+		pNativeGraphicsList->RSSetScissorRects(1, &pScene->scissorRect);
+	}
+	sw.Stop(206);
 
 	D3D12_RESOURCE_BARRIER barrier = {};
-	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	barrier.Transition.pResource = g.CurrentRenderTargetPtr()->NativePtr();
-	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-	pNativeGraphicsList->ResourceBarrier(1, &barrier);
 
-	auto handleRTV = g.CurrentRenderTargetPtr()->CpuDescriptorHandle();
-	auto handleDSV = g.DepthStencilPtr()->CpuDescriptorHandle();
-
-	pNativeGraphicsList->OMSetRenderTargets(1, &handleRTV, FALSE, &handleDSV);
-
-	FLOAT clearValue[] = { 0.2f, 0.2f, 0.5f, 1.0f };
-	pNativeGraphicsList->ClearRenderTargetView(handleRTV, clearValue, 0, nullptr);
-	pNativeGraphicsList->ClearDepthStencilView(handleDSV, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
-
-	pNativeGraphicsList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-	for (auto i = 0; i < _countof(pScene->modelPtr); ++i)
+	sw.Start(207, "OM");
 	{
-		auto pModel = pScene->modelPtr[i].get();
-		auto pTexSrv = pScene->pTextureSrv[i];
-		auto pCbv = pScene->modelTransformCbvPtr[i].get();
-		auto cbuffer = pScene->modelTransformBuffer[i];
+		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		barrier.Transition.pResource = g.CurrentRenderTargetPtr()->NativePtr();
+		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		pNativeGraphicsList->ResourceBarrier(1, &barrier);
 
-		DrawModel(pNativeGraphicsList, pModel, pTexSrv, pCbv, cbuffer);
+		auto handleRTV = g.CurrentRenderTargetPtr()->CpuDescriptorHandle();
+		auto handleDSV = g.DepthStencilPtr()->CpuDescriptorHandle();
+
+		pNativeGraphicsList->OMSetRenderTargets(1, &handleRTV, FALSE, &handleDSV);
+
+		FLOAT clearValue[] = { 0.2f, 0.2f, 0.5f, 1.0f };
+		pNativeGraphicsList->ClearRenderTargetView(handleRTV, clearValue, 0, nullptr);
+		pNativeGraphicsList->ClearDepthStencilView(handleDSV, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 	}
+	sw.Stop(207);
 
-	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-	pNativeGraphicsList->ResourceBarrier(1, &barrier);
+	sw.Start(208, "IA");
+	{
+		pNativeGraphicsList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	}
+	sw.Stop(208);
+
+	sw.Start(209, "models");
+	{
+		for (auto i = 0; i < _countof(pScene->modelPtr); ++i)
+		{
+			auto pModel = pScene->modelPtr[i].get();
+			auto pTexSrv = pScene->pTextureSrv[i];
+			auto pCbv = pScene->modelTransformCbvPtr[i].get();
+			auto cbuffer = pScene->modelTransformBuffer[i];
+
+			DrawModel(pNativeGraphicsList, pModel, pTexSrv, pCbv, cbuffer);
+		}
+	}
+	sw.Stop(209);
+
+	sw.Start(210, "wait_render");
+	{
+		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+		pNativeGraphicsList->ResourceBarrier(1, &barrier);
+	}
+	sw.Stop(210);
 
 	pStopwatch->Stop();
 
-	pGraphicsList->Close();
+	sw.Start(211, "shutdown");
+	{
+		pGraphicsList->Close();
+	}
+	sw.Stop(211);
 
-	g.SubmitCommand(pGraphicsList);
-	g.SwapBuffers();
+	sw.Start(212, "submit_cmd");
+	{
+		g.SubmitCommand(pGraphicsList);
+	}
+	sw.Stop(212);
 
-	g.WaitForCommandExecution();
+	sw.Start(213, "swap");
+	{
+		g.SwapBuffers();
+	}
+	sw.Stop(213);
+
+	sw.Start(214, "wait_cmd");
+	{
+		g.WaitForCommandExecution();
+	}
+	sw.Stop(214);
+
+	sw.Stop(200);
+	if (sw.DumpAll(200, 60))
+	{
+		sw.Reset();
+	}
 }
 
 void ShutdownScene()
