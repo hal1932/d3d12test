@@ -169,7 +169,6 @@
     <ClInclude Include="lib\GpuFence.h" />
     <ClInclude Include="lib\GpuStopwatch.h" />
     <ClInclude Include="lib\lib.h" />
-    <ClInclude Include="lib\Model.h" />
     <ClInclude Include="lib\Resource.h" />
     <ClInclude Include="lib\ResourceViewHeap.h" />
     <ClInclude Include="lib\ScreenContext.h" />
@@ -179,6 +178,7 @@
     <ClInclude Include="lib\UpdateSubresources.h" />
     <ClInclude Include="lib\Window.h" />
     <ClInclude Include="lib\WindowEvent.h" />
+    <ClInclude Include="Model.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Graphics.cpp" />

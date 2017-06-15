@@ -11,21 +11,15 @@
 
 #include "lib/lib.h"
 #include "Graphics.h"
+#include "Model.h"
 
 using Microsoft::WRL::ComPtr;
 
 const int cScreenWidth = 1280;
 const int cScreenHeight = 720;
 const int cBufferCount = 2;
+const int cModelGridSize = 15;
 
-
-__declspec(align(256))
-struct ModelTransform
-{
-	DirectX::XMMATRIX World;
-	DirectX::XMMATRIX View;
-	DirectX::XMMATRIX Proj;
-};
 
 struct Scene
 {
@@ -33,16 +27,11 @@ struct Scene
 	ComPtr<ID3D12PipelineState> pPipelineState;
 	float rotateAngle;
 
-	std::unique_ptr<fbx::Model> modelPtr[1000];
+	Model models[cModelGridSize * cModelGridSize * cModelGridSize];
 
 	ResourceViewHeap cbSrUavHeap;
 
 	ModelTransform modelTransform;
-
-	std::unique_ptr<Resource> modelTransformCbvPtr[1000];
-	void* modelTransformBuffer[1000];
-
-	Resource* pTextureSrv[1000];
 
 	D3D12_VIEWPORT viewport;
 	D3D12_RECT scissorRect;
@@ -54,27 +43,20 @@ bool SetupScene(Graphics& g)
 	auto pDevice = g.DevicePtr();
 	auto pNativeDevice = pDevice->NativePtr();
 
-	pScene->modelPtr[0] = std::make_unique<fbx::Model>();
-	pScene->modelPtr[0]->LoadFromFile("assets/test_a.fbx");
-	pScene->modelPtr[0]->UpdateResources(pDevice);
-	pScene->modelPtr[0]->UpdateSubresources(g.GraphicsListPtr(0), g.CommandQueuePtr());
+	auto& rootModel = pScene->models[0];
+	rootModel.Setup(pDevice, "assets/test_a.fbx");
+	rootModel.UpdateSubresources(g.GraphicsListPtr(0), g.CommandQueuePtr());
 
-	for (auto i = 1; i < _countof(pScene->modelPtr); ++i)
+	for (auto i = 1; i < _countof(pScene->models); ++i)
 	{
-		pScene->modelPtr[i] = std::unique_ptr<fbx::Model>(pScene->modelPtr[0]->CreateReference());
+		pScene->models[i].SetupAsReference(&rootModel);
 	}
 	
-	pScene->cbSrUavHeap.CreateHeap(pDevice, { HeapDesc::ViewType::CbSrUaView, _countof(pScene->modelPtr) * 2 });
+	pScene->cbSrUavHeap.CreateHeap(pDevice, { HeapDesc::ViewType::CbSrUaView, _countof(pScene->models) * 2 });
 
-	for (auto i = 0; i < _countof(pScene->modelPtr); ++i)
+	for (auto& model : pScene->models)
 	{
-		pScene->modelTransformCbvPtr[i] = std::unique_ptr<Resource>(
-			pScene->cbSrUavHeap.CreateConstantBufferView({ sizeof(pScene->modelTransform), D3D12_TEXTURE_LAYOUT_ROW_MAJOR }));
-
-		pScene->pTextureSrv[i] = pScene->cbSrUavHeap.CreateShaderResourceView(
-			{ D3D12_SRV_DIMENSION_TEXTURE2D,{ pScene->modelPtr[i]->MeshPtr(0)->MaterialPtr()->TexturePtr() } });
-
-		pScene->modelTransformBuffer[i] = pScene->modelTransformCbvPtr[i]->Map(0);
+		model.SetupBuffers(&pScene->cbSrUavHeap);
 	}
 
 	{
@@ -195,19 +177,20 @@ void Calc()
 
 	pScene->rotateAngle += 0.01f;
 
-	for (auto i = 0; i < 10; ++i)
+	for (auto i = 0; i < cModelGridSize; ++i)
 	{
-		for (auto j = 0; j < 10; ++j)
+		for (auto j = 0; j < cModelGridSize; ++j)
 		{
-			for (auto k = 0; k < 10; ++k)
+			for (auto k = 0; k < cModelGridSize; ++k)
 			{
-				const auto index = i * 100 + j * 10 + k;
-				auto pModel = pScene->modelPtr[index].get();
+				const auto index = i * cModelGridSize * cModelGridSize + j * cModelGridSize + k;
 
-				auto t = pModel->TransformPtr();
+				auto& model = pScene->models[index];
+
+				auto* t = model.TransformPtr();
 				t->SetScaling(0.1f, 0.1f, 0.1f);
 				t->SetRotation(0.0f, pScene->rotateAngle, 0.0f);
-				t->SetTranslation(-1.0f + i * 0.3f, -1.0f + j * 0.3f, -1.0f + k * 0.3f);
+				t->SetTranslation(-2.0f + i * 0.3f, -2.0f + j * 0.3f, -1.0f + k * 0.3f);
 				t->UpdateMatrix();
 			}
 		}
@@ -216,52 +199,25 @@ void Calc()
 	sw.Stop(100);
 }
 
-void DrawModel(ID3D12GraphicsCommandList* pCmdList, fbx::Model* pModel, Resource* pTexSrv, Resource* pCbv, void* cbuffer)
+void DrawModel(Model* pModel, ID3D12GraphicsCommandList* pCmdList)
 {
 	sw.Start(300, "model");
 
 	sw.Start(301, "model-cbuffer");
 	{
 		pScene->modelTransform.World = pModel->TransformPtr()->Matrix();
-		memcpy(cbuffer, &pScene->modelTransform, sizeof(pScene->modelTransform));
+		pModel->SetTransform(pScene->modelTransform);
 	}
 	sw.Stop(301);
 
 	sw.Start(302, "model-descriptor");
 	{
-		pCmdList->SetGraphicsRootDescriptorTable(0, pCbv->GpuDescriptorHandle());
-		pCmdList->SetGraphicsRootDescriptorTable(1, pTexSrv->GpuDescriptorHandle());
+		pModel->SetRootDescriptorTable(pCmdList);
 	}
 	sw.Stop(302);
 
 	sw.Start(303, "model-draw");
-	{
-		const auto pMesh = pModel->MeshPtr(0);
-		for (auto i = 0; i < pModel->MeshCount(); ++i)
-		{
-			const auto pMesh = pModel->MeshPtr(i);
-
-			sw.Start(401, "model-draw-vtx");
-			{
-				auto vbView = pMesh->VertexBuffer()->GetVertexBufferView(sizeof(fbx::Mesh::Vertex));
-				pCmdList->IASetVertexBuffers(0, 1, &vbView);
-			}
-			sw.Stop(401);
-
-			sw.Start(402, "model-draw-idx");
-			{
-				auto ibView = pMesh->IndexBuffer()->GetIndexBufferView(DXGI_FORMAT_R16_UINT);
-				pCmdList->IASetIndexBuffer(&ibView);
-			}
-			sw.Stop(402);
-
-			sw.Start(403, "model-draw-draw");
-			{
-				pCmdList->DrawIndexedInstanced(pMesh->IndexCount(), 1, 0, 0, 0);
-			}
-			sw.Stop(403);
-		}
-	}
+	pModel->Draw(pCmdList);
 	sw.Stop(303);
 
 	sw.Stop(300);
@@ -273,7 +229,10 @@ void Draw(Graphics& g, GpuStopwatch* pStopwatch)
 
 	sw.Start(201, "transform");
 	{
-		pScene->modelTransform.View = DirectX::XMMatrixLookAtLH({ 3.0f, 3.0f, -5.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
+		pScene->modelTransform.View = DirectX::XMMatrixLookAtLH(
+			{ 3.0f, 3.0f, -6.0f }, // eye
+			{ 0.0f, 0.0f, 0.0f },  // focus
+			{ 0.0f, 1.0f, 0.0f }); // up
 		pScene->modelTransform.Proj = DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4, g.ScreenPtr()->AspectRatio(), 1.0f, 1000.f);
 	}
 	sw.Stop(201);
@@ -348,14 +307,9 @@ void Draw(Graphics& g, GpuStopwatch* pStopwatch)
 
 	sw.Start(209, "models");
 	{
-		for (auto i = 0; i < _countof(pScene->modelPtr); ++i)
+		for (auto& model : pScene->models)
 		{
-			auto pModel = pScene->modelPtr[i].get();
-			auto pTexSrv = pScene->pTextureSrv[i];
-			auto pCbv = pScene->modelTransformCbvPtr[i].get();
-			auto cbuffer = pScene->modelTransformBuffer[i];
-
-			DrawModel(pNativeGraphicsList, pModel, pTexSrv, pCbv, cbuffer);
+			DrawModel(&model, pNativeGraphicsList);
 		}
 	}
 	sw.Stop(209);
@@ -403,15 +357,6 @@ void Draw(Graphics& g, GpuStopwatch* pStopwatch)
 
 void ShutdownScene()
 {
-	for (auto& modelPtr : pScene->modelPtr)
-	{
-		modelPtr.reset();
-	}
-
-	for (auto i = 0; i < _countof(pScene->modelTransformCbvPtr); ++i)
-	{
-		pScene->modelTransformCbvPtr[i]->Unmap(0);
-	}
 }
 
 int MainImpl(int, char**)
