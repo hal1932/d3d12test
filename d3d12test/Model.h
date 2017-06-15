@@ -22,8 +22,12 @@ public:
 	}
 
 	int BufferCount() { return 2; }
+
 	Transform* TransformPtr() { return modelPtr_->TransformPtr(); }
-	const fbx::Model& FbxModel() { return *modelPtr_; }
+
+	fbx::Model& FbxModel() { return *modelPtr_; }
+	const fbx::Model& FbxModel() const { return *modelPtr_; }
+
 	const ulonglong ShaderHash() { modelPtr_->ShaderHash(); }
 
 	void Setup(Device* pDevice, const char* filepath)

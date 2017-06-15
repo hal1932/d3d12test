@@ -120,8 +120,7 @@ bool SetupScene(Graphics& g)
 	{
 		for (auto& model : pScene->models)
 		{
-			const auto hash = pScene->shaders.LoadFromModelMaterials(model.FbxModel());
-			model.SetShaderHash(hash);
+			pScene->shaders.LoadFromModelMaterials(&model.FbxModel());
 		}
 
 		D3D12_RASTERIZER_DESC descRS = {};
