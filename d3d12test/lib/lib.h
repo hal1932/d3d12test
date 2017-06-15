@@ -18,6 +18,7 @@
 #include "GpuStopwatch.h"
 #include "FrameCounter.h"
 #include "CpuStopwatchBatch.h"
+#include "Camera.h"
 
 #pragma comment(lib, "D3d12.lib")
 #pragma comment(lib, "dxgi.lib")

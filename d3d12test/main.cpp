@@ -18,7 +18,7 @@ using Microsoft::WRL::ComPtr;
 const int cScreenWidth = 1280;
 const int cScreenHeight = 720;
 const int cBufferCount = 2;
-const int cModelGridSize = 15;
+const int cModelGridSize = 10;
 
 
 struct Scene
@@ -32,6 +32,8 @@ struct Scene
 	ResourceViewHeap cbSrUavHeap;
 
 	ModelTransform modelTransform;
+
+	Camera camera;
 
 	D3D12_VIEWPORT viewport;
 	D3D12_RECT scissorRect;
@@ -229,11 +231,21 @@ void Draw(Graphics& g, GpuStopwatch* pStopwatch)
 
 	sw.Start(201, "transform");
 	{
-		pScene->modelTransform.View = DirectX::XMMatrixLookAtLH(
-			{ 3.0f, 3.0f, -6.0f }, // eye
-			{ 0.0f, 0.0f, 0.0f },  // focus
-			{ 0.0f, 1.0f, 0.0f }); // up
-		pScene->modelTransform.Proj = DirectX::XMMatrixPerspectiveFovLH(DirectX::XM_PIDIV4, g.ScreenPtr()->AspectRatio(), 1.0f, 1000.f);
+		auto& c = pScene->camera;
+
+		c.SetPosition({ 3.0f, 3.0f, -6.0f });
+		c.SetFocus({ 0.0f, 0.0f, 0.0f });
+		c.SetUp({ 0.0f, 1.0f, 0.0f });
+
+		c.SetFovY(DirectX::XM_PIDIV4);
+		c.SetAspect(g.ScreenPtr()->AspectRatio());
+		c.SetNearPlane(0.1f);
+		c.SetFarPlane(1000.0f);
+
+		c.UpdateMatrix();
+
+		pScene->modelTransform.View = c.View();
+		pScene->modelTransform.Proj = c.Proj();
 	}
 	sw.Stop(201);
 

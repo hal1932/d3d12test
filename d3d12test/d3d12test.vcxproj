@@ -154,6 +154,7 @@
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Camera.h" />
     <ClInclude Include="Graphics.h" />
     <ClInclude Include="lib\CommandContainer.h" />
     <ClInclude Include="lib\CommandList.h" />
