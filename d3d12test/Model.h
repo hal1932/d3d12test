@@ -24,6 +24,7 @@ public:
 	int BufferCount() { return 2; }
 	Transform* TransformPtr() { return modelPtr_->TransformPtr(); }
 	const fbx::Model& FbxModel() { return *modelPtr_; }
+	const ulonglong ShaderHash() { modelPtr_->ShaderHash(); }
 
 	void Setup(Device* pDevice, const char* filepath)
 	{
@@ -57,7 +58,7 @@ public:
 
 	void SetShaderHash(ulonglong hash)
 	{
-		shaderHash_ = hash;
+		modelPtr_->SetShaderHash(hash);
 	}
 
 	void SetTransform(const ModelTransform& transform)
