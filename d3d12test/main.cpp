@@ -246,6 +246,7 @@ bool SetupScene(Graphics& g)
 			ID3D12PipelineState* pPso;
 			ThrowIfFailed(pNativeDevice->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&pPso)));
 			pScene->pPipelineStates[name] = pPso;
+			pPso->Release();
 		}
 	}
 
