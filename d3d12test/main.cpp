@@ -43,12 +43,38 @@ struct Scene
 };
 Scene* pScene = nullptr;
 
+void CreateModelCommand(Graphics& g)
+{
+	auto& lists = pScene->commandLists.GetCommandList("model_bundles");
+
+	auto pList = g.CreateCommandList(CommandList::SubmitType::Bundle, 1);
+	lists.push_back(pList);
+
+	pList->Open(pScene->pPipelineState.Get());
+
+	auto pNativeList = pList->GraphicsList();
+	pNativeList->SetGraphicsRootSignature(pScene->pRootSignature.Get());
+
+	auto pHeap = pScene->cbSrUavHeap.NativePtr();
+	pNativeList->SetDescriptorHeaps(1, &pHeap);
+
+	pNativeList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	for (auto& model : pScene->models)
+	{
+		model.CreateDrawCommand(pNativeList);
+	}
+
+	pList->Close();
+}
+
 bool SetupScene(Graphics& g)
 {
 	auto pDevice = g.DevicePtr();
 	auto pNativeDevice = pDevice->NativePtr();
 
 	auto& commandListPtrs = pScene->commandLists.CreateCommandLists("main", 0);
+	pScene->commandLists.CreateCommandLists("model_bundles", -1);
 	pScene->commandLists.CommitExecutionOrders();
 
 	auto pCommandList = g.CreateCommandList(CommandList::SubmitType::Direct, 1);
@@ -175,6 +201,8 @@ bool SetupScene(Graphics& g)
 
 	pScene->rotateAngle = 0.f;
 
+	CreateModelCommand(g);
+
 	return true;
 }
 
@@ -208,30 +236,6 @@ void Calc()
 	sw.Stop(100);
 }
 
-void DrawModel(Model* pModel, ID3D12GraphicsCommandList* pCmdList)
-{
-	sw.Start(300, "model");
-
-	sw.Start(301, "model-cbuffer");
-	{
-		pScene->modelTransform.World = pModel->TransformPtr()->Matrix();
-		pModel->SetTransform(pScene->modelTransform);
-	}
-	sw.Stop(301);
-
-	sw.Start(302, "model-descriptor");
-	{
-		pModel->SetRootDescriptorTable(pCmdList);
-	}
-	sw.Stop(302);
-
-	sw.Start(303, "model-draw");
-	pModel->Draw(pCmdList);
-	sw.Stop(303);
-
-	sw.Stop(300);
-}
-
 void Draw(Graphics& g, GpuStopwatch* pStopwatch)
 {
 	sw.Start(200, "all");
@@ -257,28 +261,11 @@ void Draw(Graphics& g, GpuStopwatch* pStopwatch)
 	sw.Stop(201);
 
 	auto pGraphicsList = pScene->commandLists.GetCommandList("main")[0];
+	pGraphicsList->Open(pScene->pPipelineState.Get());
+
 	auto pNativeGraphicsList = pGraphicsList->GraphicsList();
 
-	sw.Start(203, "open");
-	{
-		pGraphicsList->Open(pScene->pPipelineState.Get());
-	}
-	sw.Stop(203);
-
 	pStopwatch->Start(g.CommandQueuePtr()->NativePtr(), pNativeGraphicsList);
-
-	sw.Start(204, "cbv_descriptor");
-	{
-		auto heap = pScene->cbSrUavHeap.NativePtr();
-		pNativeGraphicsList->SetDescriptorHeaps(1, &heap);
-	}
-	sw.Stop(204);
-
-	sw.Start(205, "rootsig");
-	{
-		pNativeGraphicsList->SetGraphicsRootSignature(pScene->pRootSignature.Get());
-	}
-	sw.Stop(205);
 
 	sw.Start(206, "RS");
 	{
@@ -312,17 +299,22 @@ void Draw(Graphics& g, GpuStopwatch* pStopwatch)
 	}
 	sw.Stop(207);
 
-	sw.Start(208, "IA");
-	{
-		pNativeGraphicsList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	}
-	sw.Stop(208);
-
 	sw.Start(209, "models");
 	{
 		for (auto& model : pScene->models)
 		{
-			DrawModel(&model, pNativeGraphicsList);
+			pScene->modelTransform.World = model.TransformPtr()->Matrix();
+			model.SetTransform(pScene->modelTransform);
+		}
+
+		{
+			auto heap = pScene->cbSrUavHeap.NativePtr();
+			pNativeGraphicsList->SetDescriptorHeaps(1, &heap);
+
+			for (auto pBundle : pScene->commandLists.GetCommandList("model_bundles"))
+			{
+				pNativeGraphicsList->ExecuteBundle(pBundle->GraphicsList());
+			}
 		}
 	}
 	sw.Stop(209);
@@ -345,7 +337,7 @@ void Draw(Graphics& g, GpuStopwatch* pStopwatch)
 
 	sw.Start(212, "submit_cmd");
 	{
-		g.SubmitCommand(pGraphicsList);
+		pScene->commandLists.Execute(g.CommandQueuePtr());
 	}
 	sw.Stop(212);
 

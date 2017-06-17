@@ -44,6 +44,8 @@ HRESULT CommandList::Create(Device* pDevice, SubmitType type, int bufferCount)
 		return result;
 	}
 
+	Close();
+
 	type_ = type;
 	allocatorCount_ = bufferCount;
 
@@ -62,15 +64,7 @@ HRESULT CommandList::Open(ID3D12PipelineState* pPipelineState, bool swapBuffers)
 		return result;
 	}
 
-	switch (type_)
-	{
-	case SubmitType::Direct:
-		result = GraphicsList()->Reset(pAllocator, pPipelineState);
-
-	default:
-		result = S_FALSE;
-	}
-
+	result = GraphicsList()->Reset(pAllocator, pPipelineState);
 	if (FAILED(result))
 	{
 		return result;
@@ -89,13 +83,5 @@ HRESULT CommandList::Open(ID3D12PipelineState* pPipelineState, bool swapBuffers)
 
 void CommandList::Close()
 {
-	switch (type_)
-	{
-	case SubmitType::Direct:
-		static_cast<ID3D12GraphicsCommandList*>(pNativeList_)->Close();
-		break;
-
-	default:
-		break;
-	}
+	GraphicsList()->Close();
 }

@@ -46,6 +46,8 @@ public:
 		pCommandQueue->GetTimestampFrequency(&frequency_);
 		pCommandList->EndQuery(pHeap_, D3D12_QUERY_TYPE_TIMESTAMP, 0);
 		pCommandList_ = pCommandList;
+
+		isQueried_ = true;
 	}
 
 	void Stop()
@@ -63,6 +65,11 @@ public:
 
 	double ElaspedMilliseconds()
 	{
+		if (!isQueried_)
+		{
+			return 0.0;
+		}
+
 		D3D12_RANGE range = { 0, sizeof(UINT64) * 2 };
 		void* ptr = nullptr;
 		pResource_->Map(0, &range, &ptr);
@@ -81,6 +88,8 @@ private:
 
 	ID3D12QueryHeap* pHeap_;
 	ID3D12Resource* pResource_;
+
+	bool isQueried_ = false;
 
 	UINT64 frequency_;
 	UINT64 fenceValue_ = 0;

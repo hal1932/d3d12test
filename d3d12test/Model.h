@@ -70,25 +70,24 @@ public:
 		memcpy(transformPtr_, &transform, sizeof(ModelTransform));
 	}
 
-	void SetRootDescriptorTable(ID3D12GraphicsCommandList* pNativeCmdList)
+	void CreateDrawCommand(ID3D12GraphicsCommandList* pNativeList)
 	{
-		pNativeCmdList->SetGraphicsRootDescriptorTable(0, transformCbvPtr_->GpuDescriptorHandle());
-		pNativeCmdList->SetGraphicsRootDescriptorTable(1, pTextureSrv_->GpuDescriptorHandle());
-	}
+		pNativeList->SetGraphicsRootDescriptorTable(0, transformCbvPtr_->GpuDescriptorHandle());
+		pNativeList->SetGraphicsRootDescriptorTable(1, pTextureSrv_->GpuDescriptorHandle());
 
-	void Draw(ID3D12GraphicsCommandList* pNativeCmdList)
-	{
+		pNativeList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
 		for (auto i = 0; i < modelPtr_->MeshCount(); ++i)
 		{
 			const auto pMesh = modelPtr_->MeshPtr(i);
 
 			auto vbView = pMesh->VertexBuffer()->GetVertexBufferView(sizeof(fbx::Mesh::Vertex));
-			pNativeCmdList->IASetVertexBuffers(0, 1, &vbView);
+			pNativeList->IASetVertexBuffers(0, 1, &vbView);
 
 			auto ibView = pMesh->IndexBuffer()->GetIndexBufferView(DXGI_FORMAT_R16_UINT);
-			pNativeCmdList->IASetIndexBuffer(&ibView);
+			pNativeList->IASetIndexBuffer(&ibView);
 
-			pNativeCmdList->DrawIndexedInstanced(pMesh->IndexCount(), 1, 0, 0, 0);
+			pNativeList->DrawIndexedInstanced(pMesh->IndexCount(), 1, 0, 0, 0);
 		}
 	}
 
@@ -100,5 +99,7 @@ private:
 	Resource* pTextureSrv_;
 
 	ulonglong shaderHash_;
+
+	CommandList* pCommandList_;
 };
 

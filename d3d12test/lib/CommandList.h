@@ -17,6 +17,7 @@ public:
 public:
 	~CommandList();
 
+	SubmitType Type() { return type_; }
 	ID3D12CommandList* NativePtr() { return pNativeList_; }
 	ID3D12GraphicsCommandList* GraphicsList() { return static_cast<ID3D12GraphicsCommandList*>(pNativeList_); }
 
