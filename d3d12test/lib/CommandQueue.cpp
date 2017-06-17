@@ -37,7 +37,7 @@ HRESULT CommandQueue::Create(Device* pDevice)
 
 void CommandQueue::Submit(CommandList* pCommandList)
 {
-	ID3D12CommandList* ppCmdLists[] = { pCommandList->AsGraphicsList() };
+	ID3D12CommandList* ppCmdLists[] = { pCommandList->GraphicsList() };
 	pCommandQueue_->ExecuteCommandLists(1, ppCmdLists);
 }
 

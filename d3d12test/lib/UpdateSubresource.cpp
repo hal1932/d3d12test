@@ -51,7 +51,7 @@ HRESULT UpdateSubresources(
 	}
 
 	pDestinationCommandList->Open(nullptr, false);
-	auto pNativeCommandList = pDestinationCommandList->AsGraphicsList();
+	auto pNativeCommandList = pDestinationCommandList->GraphicsList();
 
 	D3D12_RESOURCE_BARRIER barrier = {};
 	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;

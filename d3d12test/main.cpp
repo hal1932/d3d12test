@@ -39,7 +39,7 @@ struct Scene
 	D3D12_VIEWPORT viewport;
 	D3D12_RECT scissorRect;
 
-	std::unique_ptr<CommandList> pCommandList;
+	CommandListManager commandLists;
 };
 Scene* pScene = nullptr;
 
@@ -48,11 +48,15 @@ bool SetupScene(Graphics& g)
 	auto pDevice = g.DevicePtr();
 	auto pNativeDevice = pDevice->NativePtr();
 
-	pScene->pCommandList = std::unique_ptr<CommandList>(g.CreateCommandList(CommandList::SubmitType::Direct, 1));
+	auto& commandListPtrs = pScene->commandLists.CreateCommandLists("main", 0);
+	pScene->commandLists.CommitExecutionOrders();
+
+	auto pCommandList = g.CreateCommandList(CommandList::SubmitType::Direct, 1);
+	commandListPtrs.push_back(pCommandList);
 
 	auto& rootModel = pScene->models[0];
 	rootModel.Setup(pDevice, "assets/test_a.fbx");
-	rootModel.UpdateSubresources(pScene->pCommandList.get(), g.CommandQueuePtr());
+	rootModel.UpdateSubresources(pCommandList, g.CommandQueuePtr());
 
 	for (auto i = 1; i < _countof(pScene->models); ++i)
 	{
@@ -252,8 +256,8 @@ void Draw(Graphics& g, GpuStopwatch* pStopwatch)
 	}
 	sw.Stop(201);
 
-	auto pGraphicsList = pScene->pCommandList.get();
-	auto pNativeGraphicsList = pGraphicsList->AsGraphicsList();
+	auto pGraphicsList = pScene->commandLists.GetCommandList("main")[0];
+	auto pNativeGraphicsList = pGraphicsList->GraphicsList();
 
 	sw.Start(203, "open");
 	{

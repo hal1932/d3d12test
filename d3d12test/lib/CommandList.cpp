@@ -65,7 +65,7 @@ HRESULT CommandList::Open(ID3D12PipelineState* pPipelineState, bool swapBuffers)
 	switch (type_)
 	{
 	case SubmitType::Direct:
-		result = AsGraphicsList()->Reset(pAllocator, pPipelineState);
+		result = GraphicsList()->Reset(pAllocator, pPipelineState);
 
 	default:
 		result = S_FALSE;

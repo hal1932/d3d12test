@@ -17,7 +17,8 @@ public:
 public:
 	~CommandList();
 
-	ID3D12GraphicsCommandList* AsGraphicsList() { return static_cast<ID3D12GraphicsCommandList*>(pNativeList_); }
+	ID3D12CommandList* NativePtr() { return pNativeList_; }
+	ID3D12GraphicsCommandList* GraphicsList() { return static_cast<ID3D12GraphicsCommandList*>(pNativeList_); }
 
 	HRESULT Create(Device* pDevice, SubmitType type, int bufferCount);
 	HRESULT Open(ID3D12PipelineState* pPipelineState, bool swapBuffers = true);
