@@ -2,6 +2,7 @@
 #include <crtdbg.h>
 
 #include <memory>
+#include <map>
 
 #include <wrl.h>
 #include <Windows.h>
@@ -18,7 +19,7 @@ using Microsoft::WRL::ComPtr;
 const int cScreenWidth = 1280;
 const int cScreenHeight = 720;
 const int cBufferCount = 2;
-const int cModelGridSize = 10;
+const int cModelGridSize = 20;
 
 
 struct Scene

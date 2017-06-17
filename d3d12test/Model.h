@@ -75,8 +75,6 @@ public:
 		pNativeList->SetGraphicsRootDescriptorTable(0, transformCbvPtr_->GpuDescriptorHandle());
 		pNativeList->SetGraphicsRootDescriptorTable(1, pTextureSrv_->GpuDescriptorHandle());
 
-		pNativeList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
 		for (auto i = 0; i < modelPtr_->MeshCount(); ++i)
 		{
 			const auto pMesh = modelPtr_->MeshPtr(i);
