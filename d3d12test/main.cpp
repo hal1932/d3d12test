@@ -3,12 +3,14 @@
 
 #include <memory>
 #include <map>
+#include <array>
 
 #include <wrl.h>
 #include <Windows.h>
 #include <tchar.h>
 #include <string>
 #include <iostream>
+#include <algorithm>
 
 #include "lib/lib.h"
 #include "Graphics.h"
@@ -26,7 +28,7 @@ struct Scene
 	ComPtr<ID3D12RootSignature> pRootSignature;
 	float rotateAngle;
 
-	Model models[cModelGridSize * cModelGridSize * cModelGridSize];
+	std::array<Model*, cModelGridSize * cModelGridSize * cModelGridSize> modelPtrs;
 	std::map<tstring, ComPtr<ID3D12PipelineState>> pPipelineStates;
 
 	ResourceViewHeap cbSrUavHeap;
@@ -59,16 +61,21 @@ void CreateModelCommand(Graphics& g)
 	pNativeList->SetGraphicsRootSignature(pScene->pRootSignature.Get());
 	pNativeList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	tstring lastMaterialName;
-	for (auto& model : pScene->models)
+	//std::sort(
+	//	pScene->modelPtrs.begin(), pScene->modelPtrs.end(),
+	//	[](const Model* lhs, const Model* rhs) { return lhs->ShaderHash() < rhs->ShaderHash();});
+
+	ulonglong lastShader = 0ULL;
+	for (auto pModel : pScene->modelPtrs)
 	{
-		auto& materialName = model.FbxModel().MeshPtr(0)->MaterialPtr()->Name();
-		if (lastMaterialName != materialName)
+		const auto shader = pModel->ShaderHash();
+		if (lastShader != shader)
 		{
-			pNativeList->SetPipelineState(pScene->pPipelineStates[materialName].Get());
-			lastMaterialName = materialName;
+			const auto& name = pScene->shaders.Name(shader);
+			pNativeList->SetPipelineState(pScene->pPipelineStates[name].Get());
+			lastShader = shader;
 		}
-		model.CreateDrawCommand(pNativeList);
+		pModel->CreateDrawCommand(pNativeList);
 	}
 
 	pList->Close();
@@ -86,7 +93,11 @@ bool SetupScene(Graphics& g)
 	auto pCommandList = g.CreateCommandList(CommandList::SubmitType::Direct, 1);
 	commandListPtrs.push_back(pCommandList);
 
-	Model* rootModels[] = { &pScene->models[0], &pScene->models[1] };
+	for (auto& pModel : pScene->modelPtrs)
+	{
+		pModel = new Model();
+	}
+	Model* rootModels[] = { pScene->modelPtrs[0], pScene->modelPtrs[1] };
 
 	rootModels[0]->Setup(pDevice, "assets/test_a.fbx");
 	rootModels[0]->UpdateSubresources(pCommandList, g.CommandQueuePtr());
@@ -94,16 +105,35 @@ bool SetupScene(Graphics& g)
 	rootModels[1]->Setup(pDevice, "assets/test_b.fbx");
 	rootModels[1]->UpdateSubresources(pCommandList, g.CommandQueuePtr());
 
-	for (auto i = 2; i < _countof(pScene->models); ++i)
+	for (auto i = 2; i < pScene->modelPtrs.size(); ++i)
 	{
-		pScene->models[i].SetupAsReference(rootModels[i % 2]);
+		pScene->modelPtrs[i]->SetupAsReference(rootModels[i % 2]);
 	}
-	
-	pScene->cbSrUavHeap.CreateHeap(pDevice, { HeapDesc::ViewType::CbSrUaView, _countof(pScene->models) * 2 });
 
-	for (auto& model : pScene->models)
+	pScene->cbSrUavHeap.CreateHeap(pDevice, { HeapDesc::ViewType::CbSrUaView, static_cast<int>(pScene->modelPtrs.size()) * 2 });
+
+	for (auto& pModel : pScene->modelPtrs)
 	{
-		model.SetupBuffers(&pScene->cbSrUavHeap);
+		pModel->SetupBuffers(&pScene->cbSrUavHeap);
+	}
+
+	for (auto i = 0; i < cModelGridSize; ++i)
+	{
+		for (auto j = 0; j < cModelGridSize; ++j)
+		{
+			for (auto k = 0; k < cModelGridSize; ++k)
+			{
+				const auto index = i * cModelGridSize * cModelGridSize + j * cModelGridSize + k;
+
+				auto pModel = pScene->modelPtrs[index];
+
+				auto t = pModel->TransformPtr();
+				t->SetScaling(0.1f, 0.1f, 0.1f);
+				t->SetRotation(0.0f, pScene->rotateAngle, 0.0f);
+				t->SetTranslation(-2.0f + i * 0.3f, -2.0f + j * 0.3f, -1.0f + k * 0.3f);
+				t->UpdateMatrix();
+			}
+		}
 	}
 
 	{
@@ -162,10 +192,14 @@ bool SetupScene(Graphics& g)
 	}
 
 	{
-		for (auto& model : pScene->models)
+		for (auto& pModel : pScene->modelPtrs)
 		{
-			pScene->shaders.LoadFromModelMaterial(&model.FbxModel());
+			pScene->shaders.LoadFromModelMaterial(&pModel->FbxModel());
 		}
+
+		std::sort(
+			pScene->modelPtrs.begin(), pScene->modelPtrs.end(),
+			[](const Model* lhs, const Model* rhs) { return lhs->ShaderHash() < rhs->ShaderHash();});
 
 		D3D12_RASTERIZER_DESC descRS = {};
 		descRS.FillMode = D3D12_FILL_MODE_SOLID;
@@ -238,12 +272,10 @@ void Calc()
 			{
 				const auto index = i * cModelGridSize * cModelGridSize + j * cModelGridSize + k;
 
-				auto& model = pScene->models[index];
+				auto pModel = pScene->modelPtrs[index];
 
-				auto* t = model.TransformPtr();
-				t->SetScaling(0.1f, 0.1f, 0.1f);
+				auto t = pModel->TransformPtr();
 				t->SetRotation(0.0f, pScene->rotateAngle, 0.0f);
-				t->SetTranslation(-2.0f + i * 0.3f, -2.0f + j * 0.3f, -1.0f + k * 0.3f);
 				t->UpdateMatrix();
 			}
 		}
@@ -317,10 +349,10 @@ void Draw(Graphics& g, GpuStopwatch* pStopwatch)
 
 	sw.Start(209, "models");
 	{
-		for (auto& model : pScene->models)
+		for (auto pModel : pScene->modelPtrs)
 		{
-			pScene->modelTransform.World = model.TransformPtr()->Matrix();
-			model.SetTransform(pScene->modelTransform);
+			pScene->modelTransform.World = pModel->TransformPtr()->Matrix();
+			pModel->SetTransform(pScene->modelTransform);
 		}
 
 		{
@@ -378,6 +410,10 @@ void Draw(Graphics& g, GpuStopwatch* pStopwatch)
 
 void ShutdownScene()
 {
+	for (auto& pModel : pScene->modelPtrs)
+	{
+		SafeDelete(&pModel);
+	}
 }
 
 int MainImpl(int, char**)

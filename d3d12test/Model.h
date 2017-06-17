@@ -28,7 +28,8 @@ public:
 	fbx::Model& FbxModel() { return *modelPtr_; }
 	const fbx::Model& FbxModel() const { return *modelPtr_; }
 
-	const ulonglong ShaderHash() { modelPtr_->ShaderHash(); }
+	const ulonglong ShaderHash() { return modelPtr_->ShaderHash(); }
+	const ulonglong ShaderHash() const { return modelPtr_->ShaderHash(); }
 
 	void Setup(Device* pDevice, const char* filepath)
 	{
