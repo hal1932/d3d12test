@@ -15,7 +15,7 @@ class ShaderManager
 public:
 	~ShaderManager();
 
-	ulonglong LoadFromModelMaterials(fbx::Model* pModel);
+	ulonglong LoadFromModelMaterial(fbx::Model* pModel);
 
 	const tstring& Name(ulonglong hash) { return names_[hash]; }
 

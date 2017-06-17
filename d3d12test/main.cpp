@@ -19,16 +19,15 @@ using Microsoft::WRL::ComPtr;
 const int cScreenWidth = 1280;
 const int cScreenHeight = 720;
 const int cBufferCount = 2;
-const int cModelGridSize = 20;
-
+const int cModelGridSize = 15;
 
 struct Scene
 {
 	ComPtr<ID3D12RootSignature> pRootSignature;
-	ComPtr<ID3D12PipelineState> pPipelineState;
 	float rotateAngle;
 
 	Model models[cModelGridSize * cModelGridSize * cModelGridSize];
+	std::map<tstring, ComPtr<ID3D12PipelineState>> pPipelineStates;
 
 	ResourceViewHeap cbSrUavHeap;
 
@@ -51,18 +50,24 @@ void CreateModelCommand(Graphics& g)
 	auto pList = g.CreateCommandList(CommandList::SubmitType::Bundle, 1);
 	lists.push_back(pList);
 
-	pList->Open(pScene->pPipelineState.Get());
+	pList->Open(nullptr);
 
 	auto pNativeList = pList->GraphicsList();
-	pNativeList->SetGraphicsRootSignature(pScene->pRootSignature.Get());
 
 	auto pHeap = pScene->cbSrUavHeap.NativePtr();
 	pNativeList->SetDescriptorHeaps(1, &pHeap);
-
+	pNativeList->SetGraphicsRootSignature(pScene->pRootSignature.Get());
 	pNativeList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
+	tstring lastMaterialName;
 	for (auto& model : pScene->models)
 	{
+		auto& materialName = model.FbxModel().MeshPtr(0)->MaterialPtr()->Name();
+		if (lastMaterialName != materialName)
+		{
+			pNativeList->SetPipelineState(pScene->pPipelineStates[materialName].Get());
+			lastMaterialName = materialName;
+		}
 		model.CreateDrawCommand(pNativeList);
 	}
 
@@ -81,13 +86,17 @@ bool SetupScene(Graphics& g)
 	auto pCommandList = g.CreateCommandList(CommandList::SubmitType::Direct, 1);
 	commandListPtrs.push_back(pCommandList);
 
-	auto& rootModel = pScene->models[0];
-	rootModel.Setup(pDevice, "assets/test_a.fbx");
-	rootModel.UpdateSubresources(pCommandList, g.CommandQueuePtr());
+	Model* rootModels[] = { &pScene->models[0], &pScene->models[1] };
 
-	for (auto i = 1; i < _countof(pScene->models); ++i)
+	rootModels[0]->Setup(pDevice, "assets/test_a.fbx");
+	rootModels[0]->UpdateSubresources(pCommandList, g.CommandQueuePtr());
+
+	rootModels[1]->Setup(pDevice, "assets/test_b.fbx");
+	rootModels[1]->UpdateSubresources(pCommandList, g.CommandQueuePtr());
+
+	for (auto i = 2; i < _countof(pScene->models); ++i)
 	{
-		pScene->models[i].SetupAsReference(&rootModel);
+		pScene->models[i].SetupAsReference(rootModels[i % 2]);
 	}
 	
 	pScene->cbSrUavHeap.CreateHeap(pDevice, { HeapDesc::ViewType::CbSrUaView, _countof(pScene->models) * 2 });
@@ -155,7 +164,7 @@ bool SetupScene(Graphics& g)
 	{
 		for (auto& model : pScene->models)
 		{
-			pScene->shaders.LoadFromModelMaterials(&model.FbxModel());
+			pScene->shaders.LoadFromModelMaterial(&model.FbxModel());
 		}
 
 		D3D12_RASTERIZER_DESC descRS = {};
@@ -180,10 +189,7 @@ bool SetupScene(Graphics& g)
 		}
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {};
-		desc.InputLayout = pScene->shaders.InputLayout("Simple");
 		desc.pRootSignature = pScene->pRootSignature.Get();
-		desc.VS = pScene->shaders.VertexShader("Simple");
-		desc.PS = pScene->shaders.PixelShader("Simple");
 		desc.RasterizerState = descRS;
 		desc.BlendState = descBS;
 		desc.DepthStencilState.DepthEnable = TRUE;
@@ -197,7 +203,16 @@ bool SetupScene(Graphics& g)
 		desc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 		desc.SampleDesc.Count = 1;
 
-		ThrowIfFailed(pNativeDevice->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&pScene->pPipelineState)));
+		for (const auto& name : { "Simple", "Simple2" })
+		{
+			desc.InputLayout = pScene->shaders.InputLayout(name);
+			desc.VS = pScene->shaders.VertexShader(name);
+			desc.PS = pScene->shaders.PixelShader(name);
+
+			ID3D12PipelineState* pPso;
+			ThrowIfFailed(pNativeDevice->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&pPso)));
+			pScene->pPipelineStates[name] = pPso;
+		}
 	}
 
 	pScene->rotateAngle = 0.f;
@@ -262,7 +277,7 @@ void Draw(Graphics& g, GpuStopwatch* pStopwatch)
 	sw.Stop(201);
 
 	auto pGraphicsList = pScene->commandLists.GetCommandList("main")[0];
-	pGraphicsList->Open(pScene->pPipelineState.Get());
+	pGraphicsList->Open(nullptr);
 
 	auto pNativeGraphicsList = pGraphicsList->GraphicsList();
 

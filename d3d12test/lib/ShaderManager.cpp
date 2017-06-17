@@ -19,7 +19,7 @@ ShaderManager::~ShaderManager()
 	}
 }
 
-ulonglong ShaderManager::LoadFromModelMaterials(fbx::Model* pModel)
+ulonglong ShaderManager::LoadFromModelMaterial(fbx::Model* pModel)
 {
 	// TODO: エラーハンドリング
 	const auto& name = pModel->MeshPtr(0)->MaterialPtr()->Name();
