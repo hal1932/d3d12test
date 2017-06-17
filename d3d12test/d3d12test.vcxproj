@@ -156,7 +156,6 @@
   <ItemGroup>
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Graphics.h" />
-    <ClInclude Include="lib\CommandContainer.h" />
     <ClInclude Include="lib\CommandList.h" />
     <ClInclude Include="lib\CommandQueue.h" />
     <ClInclude Include="lib\common.h" />
@@ -184,7 +183,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Graphics.cpp" />
-    <ClCompile Include="lib\CommandContainer.cpp" />
     <ClCompile Include="lib\CommandList.cpp" />
     <ClCompile Include="lib\CommandQueue.cpp" />
     <ClCompile Include="lib\Device.cpp" />

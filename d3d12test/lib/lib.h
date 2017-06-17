@@ -6,7 +6,6 @@
 #include "ScreenContext.h"
 #include "GpuFence.h"
 #include "CommandQueue.h"
-#include "CommandContainer.h"
 #include "CommandList.h"
 #include "ResourceViewHeap.h"
 #include "Resource.h"

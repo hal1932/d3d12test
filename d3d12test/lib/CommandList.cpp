@@ -1,25 +1,42 @@
 #include "CommandList.h"
 #include "common.h"
 #include "Device.h"
-#include "CommandContainer.h"
-
-CommandList::CommandList(CommandContainer* pParent)
-	: pParent_(pParent)
-{}
 
 CommandList::~CommandList()
 {
 	SafeRelease(&pNativeList_);
+
+	for (auto pAllocator : allocatorPtrs_)
+	{
+		SafeRelease(&pAllocator);
+	}
 }
 
-HRESULT CommandList::Create(Device* pDevice)
+HRESULT CommandList::Create(Device* pDevice, SubmitType type, int bufferCount)
 {
 	HRESULT result;
 
-	result = pDevice->NativePtr()->CreateCommandList(
+	auto pNativeDevice = pDevice->NativePtr();
+
+	allocatorPtrs_.resize(bufferCount);
+	for (auto i = 0; i < bufferCount; ++i)
+	{
+		ID3D12CommandAllocator* pAllocator;
+		result = pNativeDevice->CreateCommandAllocator(
+			static_cast<D3D12_COMMAND_LIST_TYPE>(type),
+			IID_PPV_ARGS(&pAllocator));
+		if (FAILED(result))
+		{
+			return result;
+		}
+
+		allocatorPtrs_[i] = pAllocator;
+	}
+
+	result = pNativeDevice->CreateCommandList(
 		0,
-		static_cast<D3D12_COMMAND_LIST_TYPE>(pParent_->Type()),
-		pParent_->NativePtr(),
+		static_cast<D3D12_COMMAND_LIST_TYPE>(type),
+		allocatorPtrs_[currentAllocatorIndex_],
 		nullptr,
 		IID_PPV_ARGS(&pNativeList_));
 	if (FAILED(result))
@@ -27,26 +44,54 @@ HRESULT CommandList::Create(Device* pDevice)
 		return result;
 	}
 
+	type_ = type;
+	allocatorCount_ = bufferCount;
+
 	return result;
 }
 
-HRESULT CommandList::Open(ID3D12PipelineState* pPipelineState)
+HRESULT CommandList::Open(ID3D12PipelineState* pPipelineState, bool swapBuffers)
 {
-	switch (pParent_->Type())
+	auto result = S_OK;
+
+	auto pAllocator = allocatorPtrs_[currentAllocatorIndex_];
+	
+	result = pAllocator->Reset();
+	if (FAILED(result))
 	{
-	case CommandContainer::SubmitType::Direct:
-		return AsGraphicsList()->Reset(pParent_->NativePtr(), pPipelineState);
+		return result;
+	}
+
+	switch (type_)
+	{
+	case SubmitType::Direct:
+		result = AsGraphicsList()->Reset(pAllocator, pPipelineState);
 
 	default:
-		return S_FALSE;
+		result = S_FALSE;
 	}
+
+	if (FAILED(result))
+	{
+		return result;
+	}
+
+	if (swapBuffers)
+	{
+		if (++currentAllocatorIndex_ >= allocatorCount_)
+		{
+			currentAllocatorIndex_ = 0;
+		}
+	}
+
+	return result;
 }
 
 void CommandList::Close()
 {
-	switch (pParent_->Type())
+	switch (type_)
 	{
-	case CommandContainer::SubmitType::Direct:
+	case SubmitType::Direct:
 		static_cast<ID3D12GraphicsCommandList*>(pNativeList_)->Close();
 		break;
 

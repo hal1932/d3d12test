@@ -4,27 +4,27 @@
 class Graphics
 {
 public:
-	~Graphics();
-
 	HRESULT Setup(bool debug);
 
 	Device* DevicePtr() { return &device_; }
 	ScreenContext* ScreenPtr() { return &screen_; }
 	CommandQueue* CommandQueuePtr() { return &commandQueue_; }
-	CommandList* GraphicsListPtr(int index) { return graphicsListPtrs_[index]; }
 
 	Resource* CurrentRenderTargetPtr() { return renderTargetPtrs_[screen_.FrameIndex()].get(); }
 	Resource* DepthStencilPtr() { return depthStencilPtr_.get(); }
 
-	size_t GraphicsListCount() { return graphicsListPtrs_.size(); }
-	size_t GraphicsListCount() const { return graphicsListPtrs_.size(); }
-
 	HRESULT ResizeScreen(const ScreenContextDesc& desc);
 	HRESULT ResizeScreen(int width, int height);
 
-	HRESULT AddGraphicsComandList(int count);
+	HRESULT CreateCommandList(CommandList** ppOut, CommandList::SubmitType type, int bufferCount);
 
-	void ClearCommand();
+	CommandList* CreateCommandList(CommandList::SubmitType type, int bufferCount)
+	{
+		CommandList* pOut = nullptr;
+		CreateCommandList(&pOut, type, bufferCount);
+		return pOut;
+	}
+
 	void SubmitCommand(CommandList* pCommandList);
 	void SwapBuffers();
 	HRESULT WaitForCommandExecution();
@@ -40,7 +40,5 @@ private:
 	std::unique_ptr<Resource> depthStencilPtr_;
 
 	CommandQueue commandQueue_;
-	CommandContainer graphicsListContainer_;
-	std::vector<CommandList*> graphicsListPtrs_;
 };
 

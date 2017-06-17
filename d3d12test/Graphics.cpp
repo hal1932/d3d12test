@@ -1,13 +1,5 @@
 #include "Graphics.h"
 
-Graphics::~Graphics()
-{
-	for (auto pList : graphicsListPtrs_)
-	{
-		SafeDelete(&pList);
-	}
-}
-
 HRESULT Graphics::Setup(bool debug)
 {
 	auto result = S_OK;
@@ -24,12 +16,6 @@ HRESULT Graphics::Setup(bool debug)
 	device_.Create();
 
 	result = commandQueue_.Create(&device_);
-	if (FAILED(result))
-	{
-		return result;
-	}
-
-	result = graphicsListContainer_.Create(&device_);
 	if (FAILED(result))
 	{
 		return result;
@@ -81,37 +67,17 @@ HRESULT Graphics::ResizeScreen(int width, int height)
 	return ResizeScreen(desc);
 }
 
-HRESULT Graphics::AddGraphicsComandList(int count)
+HRESULT Graphics::CreateCommandList(CommandList** ppOut, CommandList::SubmitType type, int bufferCount)
 {
-	auto result = S_OK;
-
-	std::vector<CommandList*> tmpLists;
-	for (auto i = 0; i < count; ++i)
+	auto pResult = new CommandList();
+	auto result = pResult->Create(&device_, type, bufferCount);
+	if (FAILED(result))
 	{
-		auto pList = graphicsListContainer_.CreateCommandList();
-		if (pList == nullptr)
-		{
-			result = S_FALSE;
-			break;
-		}
-		tmpLists.push_back(pList);
+		SafeDelete(&pResult);
 	}
 
-	if (SUCCEEDED(result))
-	{
-		for (auto pList : tmpLists)
-		{
-			pList->Close();
-			graphicsListPtrs_.push_back(pList);
-		}
-	}
-
+	*ppOut = pResult;
 	return result;
-}
-
-void Graphics::ClearCommand()
-{
-	graphicsListContainer_.ClearState();
 }
 
 void Graphics::SubmitCommand(CommandList* pCommandList)

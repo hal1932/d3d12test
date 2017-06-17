@@ -38,6 +38,8 @@ struct Scene
 
 	D3D12_VIEWPORT viewport;
 	D3D12_RECT scissorRect;
+
+	std::unique_ptr<CommandList> pCommandList;
 };
 Scene* pScene = nullptr;
 
@@ -46,9 +48,11 @@ bool SetupScene(Graphics& g)
 	auto pDevice = g.DevicePtr();
 	auto pNativeDevice = pDevice->NativePtr();
 
+	pScene->pCommandList = std::unique_ptr<CommandList>(g.CreateCommandList(CommandList::SubmitType::Direct, 1));
+
 	auto& rootModel = pScene->models[0];
 	rootModel.Setup(pDevice, "assets/test_a.fbx");
-	rootModel.UpdateSubresources(g.GraphicsListPtr(0), g.CommandQueuePtr());
+	rootModel.UpdateSubresources(pScene->pCommandList.get(), g.CommandQueuePtr());
 
 	for (auto i = 1; i < _countof(pScene->models); ++i)
 	{
@@ -248,13 +252,7 @@ void Draw(Graphics& g, GpuStopwatch* pStopwatch)
 	}
 	sw.Stop(201);
 
-	sw.Start(202, "clear_cmds");
-	{
-		g.ClearCommand();
-	}
-	sw.Stop(202);
-
-	auto pGraphicsList = g.GraphicsListPtr(0);
+	auto pGraphicsList = pScene->pCommandList.get();
 	auto pNativeGraphicsList = pGraphicsList->AsGraphicsList();
 
 	sw.Start(203, "open");
@@ -392,7 +390,6 @@ int MainImpl(int, char**)
 	});
 
 	graphics.Setup(true);
-	graphics.AddGraphicsComandList(1);
 
 	ScreenContextDesc desc = {};
 	desc.BufferCount = cBufferCount;
