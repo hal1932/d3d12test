@@ -137,56 +137,31 @@ bool SetupScene(Graphics& g)
 	}
 
 	{
-		D3D12_DESCRIPTOR_RANGE range[2];
-		range[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-		range[0].NumDescriptors = 1;
-		range[0].BaseShaderRegister = 0;
-		range[0].RegisterSpace = 0;
-		range[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+		CD3DX12_DESCRIPTOR_RANGE1 ranges[2];
+		ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
+		ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
 
-		range[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-		range[1].NumDescriptors = 1;
-		range[1].BaseShaderRegister = 0;
-		range[1].RegisterSpace = 0;
-		range[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+		CD3DX12_ROOT_PARAMETER1 params[2];
+		params[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_VERTEX);
+		params[1].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_PIXEL);
 
-		D3D12_ROOT_PARAMETER param[2];
-		param[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		param[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-		param[0].DescriptorTable.NumDescriptorRanges = 1;
-		param[0].DescriptorTable.pDescriptorRanges = &range[0];
-
-		param[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		param[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-		param[1].DescriptorTable.NumDescriptorRanges = 1;
-		param[1].DescriptorTable.pDescriptorRanges = &range[1];
-
-		D3D12_STATIC_SAMPLER_DESC sampler = {};
-		sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-		sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-		sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-		sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-		sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-		sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
-		sampler.MinLOD = 0.0f;
-		sampler.MaxLOD = D3D12_FLOAT32_MAX;
+		CD3DX12_STATIC_SAMPLER_DESC sampler(0, D3D12_FILTER_MIN_MAG_MIP_LINEAR);
 		sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-		D3D12_ROOT_SIGNATURE_DESC desc = {};
-		desc.NumParameters = _countof(param);
-		desc.pParameters = param;
-		desc.NumStaticSamplers = 1;
-		desc.pStaticSamplers = &sampler;
-		desc.Flags =
+		CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC desc;
+		desc.Init_1_1(
+			_countof(params), params,
+			1, &sampler,
 			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT
 			| D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS
 			| D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS
-			| D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
+			| D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS
+		);
 
 		ComPtr<ID3DBlob> pSignature;
 		ComPtr<ID3DBlob> pError;
 
-		ThrowIfFailed(D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &pSignature, &pError));
+		ThrowIfFailed(D3DX12SerializeVersionedRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &pSignature, &pError));
 
 		ThrowIfFailed(pNativeDevice->CreateRootSignature(0, pSignature->GetBufferPointer(), pSignature->GetBufferSize(), IID_PPV_ARGS(&pScene->pRootSignature)));
 	}
@@ -199,28 +174,11 @@ bool SetupScene(Graphics& g)
 
 		std::sort(
 			pScene->modelPtrs.begin(), pScene->modelPtrs.end(),
-			[](const Model* lhs, const Model* rhs) { return lhs->ShaderHash() < rhs->ShaderHash();});
+			[](const Model* lhs, const Model* rhs) { return lhs->ShaderHash() < rhs->ShaderHash();}
+		);
 
-		D3D12_RASTERIZER_DESC descRS = {};
-		descRS.FillMode = D3D12_FILL_MODE_SOLID;
-		descRS.CullMode = D3D12_CULL_MODE_BACK;
-		descRS.DepthClipEnable = TRUE;
-
-		D3D12_RENDER_TARGET_BLEND_DESC descRTBS = {
-			FALSE, FALSE,
-			D3D12_BLEND_ONE, D3D12_BLEND_ZERO, D3D12_BLEND_OP_ADD,
-			D3D12_BLEND_ONE, D3D12_BLEND_ZERO, D3D12_BLEND_OP_ADD,
-			D3D12_LOGIC_OP_NOOP,
-			D3D12_COLOR_WRITE_ENABLE_ALL,
-		};
-
-		D3D12_BLEND_DESC descBS = {};
-		descBS.AlphaToCoverageEnable = FALSE;
-		descBS.IndependentBlendEnable = FALSE;
-		for (UINT i = 0; i < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i)
-		{
-			descBS.RenderTarget[i] = descRTBS;
-		}
+		CD3DX12_RASTERIZER_DESC descRS(D3D12_DEFAULT);
+		CD3DX12_BLEND_DESC descBS(D3D12_DEFAULT);
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {};
 		desc.pRootSignature = pScene->pRootSignature.Get();
@@ -327,14 +285,12 @@ void Draw(Graphics& g, GpuStopwatch* pStopwatch)
 	}
 	sw.Stop(206);
 
-	D3D12_RESOURCE_BARRIER barrier = {};
-
 	sw.Start(207, "OM");
 	{
-		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		barrier.Transition.pResource = g.CurrentRenderTargetPtr()->NativePtr();
-		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+			g.CurrentRenderTargetPtr()->NativePtr(),
+			D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET
+		);
 		pNativeGraphicsList->ResourceBarrier(1, &barrier);
 
 		auto handleRTV = g.CurrentRenderTargetPtr()->CpuDescriptorHandle();
@@ -370,8 +326,10 @@ void Draw(Graphics& g, GpuStopwatch* pStopwatch)
 
 	sw.Start(210, "wait_render");
 	{
-		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+		const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+			g.CurrentRenderTargetPtr()->NativePtr(),
+			D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT
+		);
 		pNativeGraphicsList->ResourceBarrier(1, &barrier);
 	}
 	sw.Stop(210);
