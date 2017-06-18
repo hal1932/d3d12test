@@ -88,13 +88,10 @@ std::vector<Resource*> ResourceViewHeap::CreateRenderTargetViewFromBackBuffer(Sc
 
 Resource* ResourceViewHeap::CreateDepthStencilView(ScreenContext* pContext, const DsvDesc& desc)
 {
-	ResourceDesc resourceDesc = {};
-	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-	resourceDesc.Width = desc.Width;
-	resourceDesc.Height = desc.Height;
-	resourceDesc.Format = desc.Format;
+	auto resourceDesc = ResourceDesc::Tex2D(
+		desc.Format, D3D12_RESOURCE_STATE_DEPTH_WRITE,
+		desc.Width, desc.Height);
 	resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-	resourceDesc.States = D3D12_RESOURCE_STATE_DEPTH_WRITE;
 
 	D3D12_CLEAR_VALUE clearValue = {};
 	clearValue.Format = desc.Format;
@@ -127,12 +124,9 @@ Resource* ResourceViewHeap::CreateDepthStencilView(ScreenContext* pContext, cons
 
 Resource* ResourceViewHeap::CreateConstantBufferView(const CsvDesc& desc)
 {
-	ResourceDesc resourceDesc = {};
-	resourceDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
-	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	resourceDesc.Width = desc.Size;
-	resourceDesc.Layout = desc.Layout;
-	resourceDesc.States = D3D12_RESOURCE_STATE_GENERIC_READ;
+	const auto resourceDesc = ResourceDesc::Buffer(
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		desc.Size, desc.Layout);
 
 	HRESULT result;
 

@@ -187,6 +187,7 @@
     <ClInclude Include="lib\GpuStopwatch.h" />
     <ClInclude Include="lib\lib.h" />
     <ClInclude Include="lib\Resource.h" />
+    <ClInclude Include="lib\ResourceDesc.h" />
     <ClInclude Include="lib\ResourceViewHeap.h" />
     <ClInclude Include="lib\ScreenContext.h" />
     <ClInclude Include="lib\Shader.h" />

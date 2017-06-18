@@ -1,4 +1,5 @@
 #pragma once
+#include "ResourceDesc.h"
 #include <d3d12.h>
 #include <memory>
 
@@ -7,21 +8,6 @@ class CommandList;
 class CommandQueue;
 class GpuFence;
 class ResourceViewHeap;
-
-struct ResourceDesc
-{
-	D3D12_HEAP_TYPE HeapType = D3D12_HEAP_TYPE_DEFAULT;
-	DXGI_FORMAT Format = DXGI_FORMAT_UNKNOWN;
-	D3D12_RESOURCE_DIMENSION Dimension;
-	UINT64 Width;
-	UINT Height = 1;
-	short Depth = 1;
-	short MipLevels = 1;
-	int SampleCount = 1;
-	D3D12_TEXTURE_LAYOUT Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-	D3D12_RESOURCE_FLAGS Flags = D3D12_RESOURCE_FLAG_NONE;
-	D3D12_RESOURCE_STATES States;
-};
 
 class MappedResource
 {

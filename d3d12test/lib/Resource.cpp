@@ -48,10 +48,7 @@ HRESULT Resource::CreateCommited(Device* pDevice, const ResourceDesc& desc, cons
 
 HRESULT Resource::CreateCommitedImpl_(Device* pDevice, const ResourceDesc& desc, const D3D12_CLEAR_VALUE* pClearValue)
 {
-	D3D12_HEAP_PROPERTIES heapProp = {};
-	heapProp.Type = desc.HeapType;
-	heapProp.CreationNodeMask = 1;
-	heapProp.VisibleNodeMask = 1;
+	CD3DX12_HEAP_PROPERTIES heapProp(desc.HeapType);
 
 	D3D12_RESOURCE_DESC resDesc = {};
 	resDesc.Dimension = desc.Dimension;
@@ -63,6 +60,7 @@ HRESULT Resource::CreateCommitedImpl_(Device* pDevice, const ResourceDesc& desc,
 	resDesc.SampleDesc.Count = static_cast<UINT>(desc.SampleCount);
 	resDesc.Flags = desc.Flags;
 	resDesc.Layout = desc.Layout;
+
 
 	HRESULT result;
 
@@ -86,13 +84,9 @@ HRESULT Resource::CreateCommitedImpl_(Device* pDevice, const ResourceDesc& desc,
 
 HRESULT Resource::CreateVertexBuffer(Device* pDevice, int size)
 {
-	ResourceDesc desc = {};
-	desc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
-	desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	desc.Width = size;
-	desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	desc.States = D3D12_RESOURCE_STATE_GENERIC_READ;
-
+	const auto desc = ResourceDesc::Buffer(
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		size, D3D12_TEXTURE_LAYOUT_ROW_MAJOR);
 	return CreateCommited(pDevice, desc);
 }
 

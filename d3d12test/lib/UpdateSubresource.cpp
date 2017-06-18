@@ -37,12 +37,10 @@ HRESULT UpdateSubresources(
 	auto pNativeDevice = pDevice->NativePtr();
 	const auto destResourceDesc = pDestinationResource->NativePtr()->GetDesc();
 
-	ResourceDesc intermediateDesc = {};
-	intermediateDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
-	intermediateDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	intermediateDesc.Width = GetSubresourcesFootprint_(pNativeDevice, firstSubresource, subresourceCount, destResourceDesc);
-	intermediateDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	intermediateDesc.States = D3D12_RESOURCE_STATE_GENERIC_READ;
+	const auto intermediateDesc = ResourceDesc::Buffer(
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		GetSubresourcesFootprint_(pNativeDevice, firstSubresource, subresourceCount, destResourceDesc),
+		D3D12_TEXTURE_LAYOUT_ROW_MAJOR);
 
 	result = pIntermediateResource->CreateCommited(pDevice, intermediateDesc);
 	if (FAILED(result))
@@ -53,13 +51,12 @@ HRESULT UpdateSubresources(
 	pDestinationCommandList->Open(nullptr, false);
 	auto pNativeCommandList = pDestinationCommandList->GraphicsList();
 
-	D3D12_RESOURCE_BARRIER barrier = {};
-	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	barrier.Transition.pResource = pDestinationResource->NativePtr();
-	barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
-	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
-	pNativeCommandList->ResourceBarrier(1, &barrier);
+	{
+		const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+			pDestinationResource->NativePtr(),
+			D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+		pNativeCommandList->ResourceBarrier(1, &barrier);
+	}
 
 	result = UpdateSubresourcesImpl_(
 		pNativeDevice,
@@ -73,9 +70,12 @@ HRESULT UpdateSubresources(
 		return result;
 	}
 
-	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
-	pNativeCommandList->ResourceBarrier(1, &barrier);
+	{
+		const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+			pDestinationResource->NativePtr(),
+			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+		pNativeCommandList->ResourceBarrier(1, &barrier);
+	}
 
 	pNativeCommandList->Close();
 
@@ -179,13 +179,9 @@ HRESULT UpdateSubresourcesImpl_(
 
 	if (destResourceDesc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
 	{
-		D3D12_BOX box = {};
-		box.top = 0;
-		box.left = static_cast<UINT>(pLayouts[0].Offset);
-		box.bottom = 1;
-		box.right = static_cast<UINT>(pLayouts[0].Offset + pLayouts[0].Footprint.Width);
-		box.front = 0;
-		box.back = 1;
+		CD3DX12_BOX box(
+			static_cast<UINT>(pLayouts[0].Offset),
+			static_cast<UINT>(pLayouts[0].Offset + pLayouts[0].Footprint.Width));
 
 		pCommandList->CopyBufferRegion(
 			pDestResource, 0,
@@ -196,16 +192,8 @@ HRESULT UpdateSubresourcesImpl_(
 	{
 		for (UINT i = 0; i < count; ++i)
 		{
-			D3D12_TEXTURE_COPY_LOCATION src = {};
-			src.pResource = pIntermediate;
-			src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-			src.PlacedFootprint = pLayouts[i];
-
-			D3D12_TEXTURE_COPY_LOCATION dst = {};
-			dst.pResource = pDestResource;
-			dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-			dst.SubresourceIndex = start + i;
-
+			CD3DX12_TEXTURE_COPY_LOCATION src(pIntermediate, pLayouts[i]);
+			CD3DX12_TEXTURE_COPY_LOCATION dst(pDestResource, start + i);
 			pCommandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
 		}
 	}

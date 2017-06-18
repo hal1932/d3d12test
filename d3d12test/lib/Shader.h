@@ -1,5 +1,6 @@
 #pragma once
 #include <d3d12.h>
+#include <d3dx12.h>
 #include <vector>
 #include <string>
 
@@ -31,11 +32,7 @@ public:
 	ID3DBlob* NativePtr() { return pBlob_; }
 
 	D3D12_INPUT_LAYOUT_DESC NativeInputLayout() { return pInputLayout_->NativeObj(); }
-
-	D3D12_SHADER_BYTECODE NativeByteCode()
-	{
-		return{ pBlob_->GetBufferPointer(), pBlob_->GetBufferSize() };
-	}
+	D3D12_SHADER_BYTECODE NativeByteCode() { return CD3DX12_SHADER_BYTECODE(pBlob_); }
 
 	HRESULT CreateFromSourceFile(const ShaderDesc& desc);
 	HRESULT CreateFromCompiledFile(const CompiledShaderDesc& desc);
@@ -50,7 +47,7 @@ private:
 	public:
 		~InputLayout();
 
-		D3D12_INPUT_LAYOUT_DESC NativeObj() { return{ pElements_, elementCount_ }; }
+		D3D12_INPUT_LAYOUT_DESC NativeObj() { return { pElements_, elementCount_ }; }
 		HRESULT Create(ID3DBlob *pBlob);
 
 	private:
