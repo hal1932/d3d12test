@@ -22,6 +22,7 @@ const int cScreenWidth = 1280;
 const int cScreenHeight = 720;
 const int cBufferCount = 2;
 const int cModelGridSize = 15;
+const int cThreadCount = 3;
 
 struct Scene
 {
@@ -33,7 +34,7 @@ struct Scene
 
 	ResourceViewHeap cbSrUavHeap;
 
-	ModelTransform modelTransform;
+	ModelTransform modelTransforms[cThreadCount];
 
 	Camera camera;
 	ShaderManager shaders;
@@ -42,6 +43,7 @@ struct Scene
 	D3D12_RECT scissorRect;
 
 	CommandListManager commandLists;
+	TaskQueue taskQueue;
 };
 Scene* pScene = nullptr;
 
@@ -49,40 +51,59 @@ void CreateModelCommand(Graphics& g)
 {
 	auto& lists = pScene->commandLists.GetCommandList("model_bundles");
 
-	auto pList = g.CreateCommandList(CommandList::SubmitType::Bundle, 1);
-	lists.push_back(pList);
+	const auto threadCount = pScene->taskQueue.ThreadCount();
+	const auto countPerThread = pScene->modelPtrs.size() / threadCount;
 
-	pList->Open(nullptr);
-
-	auto pNativeList = pList->GraphicsList();
-
-	auto pHeap = pScene->cbSrUavHeap.NativePtr();
-	pNativeList->SetDescriptorHeaps(1, &pHeap);
-	pNativeList->SetGraphicsRootSignature(pScene->pRootSignature.Get());
-	pNativeList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-	//std::sort(
-	//	pScene->modelPtrs.begin(), pScene->modelPtrs.end(),
-	//	[](const Model* lhs, const Model* rhs) { return lhs->ShaderHash() < rhs->ShaderHash();});
-
-	ulonglong lastShader = 0ULL;
-	for (auto pModel : pScene->modelPtrs)
+	for (auto i = 0; i < threadCount; ++i)
 	{
-		const auto shader = pModel->ShaderHash();
-		if (lastShader != shader)
+		auto count = countPerThread;
+		if (i == threadCount - 1)
 		{
-			const auto& name = pScene->shaders.Name(shader);
-			pNativeList->SetPipelineState(pScene->pPipelineStates[name].Get());
-			lastShader = shader;
+			count = pScene->modelPtrs.size() - countPerThread * i;
 		}
-		pModel->CreateDrawCommand(pNativeList);
-	}
 
-	pList->Close();
+		const auto start = countPerThread * i;
+		const auto end = start + count;
+
+		auto pList = g.CreateCommandList(CommandList::SubmitType::Bundle, 1);
+		lists.push_back(pList);
+
+		pList->Open(nullptr);
+
+		auto pNativeList = pList->GraphicsList();
+
+		auto pHeap = pScene->cbSrUavHeap.NativePtr();
+		pNativeList->SetDescriptorHeaps(1, &pHeap);
+		pNativeList->SetGraphicsRootSignature(pScene->pRootSignature.Get());
+		pNativeList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+		//std::sort(
+		//	pScene->modelPtrs.begin(), pScene->modelPtrs.end(),
+		//	[](const Model* lhs, const Model* rhs) { return lhs->ShaderHash() < rhs->ShaderHash();});
+
+		ulonglong lastShader = 0ULL;
+		//for (auto pModel : pScene->modelPtrs)
+		for (auto i = start; i < end; ++i)
+		{
+			auto pModel = pScene->modelPtrs[i];
+			const auto shader = pModel->ShaderHash();
+			if (lastShader != shader)
+			{
+				const auto& name = pScene->shaders.Name(shader);
+				pNativeList->SetPipelineState(pScene->pPipelineStates[name].Get());
+				lastShader = shader;
+			}
+			pModel->CreateDrawCommand(pNativeList);
+		}
+
+		pList->Close();
+	}
 }
 
 bool SetupScene(Graphics& g)
 {
+	pScene->taskQueue.Setup(cThreadCount);
+
 	auto pDevice = g.DevicePtr();
 	auto pNativeDevice = pDevice->NativePtr();
 
@@ -223,22 +244,45 @@ void Calc()
 
 	pScene->rotateAngle += 0.01f;
 
-	for (auto i = 0; i < cModelGridSize; ++i)
+#if false
+	for (auto i = 0; i < cModelGridSize * cModelGridSize * cModelGridSize; ++i)
 	{
-		for (auto j = 0; j < cModelGridSize; ++j)
-		{
-			for (auto k = 0; k < cModelGridSize; ++k)
-			{
-				const auto index = i * cModelGridSize * cModelGridSize + j * cModelGridSize + k;
+		auto pModel = pScene->modelPtrs[i];
 
-				auto pModel = pScene->modelPtrs[index];
+		auto t = pModel->TransformPtr();
+		t->SetRotation(0.0f, pScene->rotateAngle, 0.0f);
+		t->UpdateMatrix();
+	}
+#else
+	const auto threadCount = pScene->taskQueue.ThreadCount();
+
+	auto& models = pScene->modelPtrs;
+	const auto countPerThread = models.size() / threadCount;
+
+	for (auto i = 0; i < threadCount; ++i)
+	{
+		auto count = countPerThread;
+		if (i == threadCount - 1)
+		{
+			count = pScene->modelPtrs.size() - countPerThread * i;
+		}
+
+		const auto start = countPerThread * i;
+		const auto end = start + count;
+
+		pScene->taskQueue.Enqueue([i, start, end, &models]()
+		{
+			for (auto j = start; j < end; ++j)
+			{
+				auto pModel = models[j];
 
 				auto t = pModel->TransformPtr();
 				t->SetRotation(0.0f, pScene->rotateAngle, 0.0f);
 				t->UpdateMatrix();
 			}
-		}
+		});
 	}
+#endif
 
 	sw.Stop(100);
 }
@@ -247,7 +291,7 @@ void Draw(Graphics& g, GpuStopwatch* pStopwatch)
 {
 	sw.Start(200, "all");
 
-	sw.Start(201, "transform");
+	sw.Start(201, "camera");
 	{
 		auto& c = pScene->camera;
 
@@ -262,8 +306,11 @@ void Draw(Graphics& g, GpuStopwatch* pStopwatch)
 
 		c.UpdateMatrix();
 
-		pScene->modelTransform.View = c.View();
-		pScene->modelTransform.Proj = c.Proj();
+		for (auto i = 0; i < pScene->taskQueue.ThreadCount(); ++i)
+		{
+			pScene->modelTransforms[i].View = c.View();
+			pScene->modelTransforms[i].Proj = c.Proj();
+		}
 	}
 	sw.Stop(201);
 
@@ -272,9 +319,13 @@ void Draw(Graphics& g, GpuStopwatch* pStopwatch)
 
 	auto pNativeGraphicsList = pGraphicsList->GraphicsList();
 
+	{
+		auto heap = pScene->cbSrUavHeap.NativePtr();
+		pNativeGraphicsList->SetDescriptorHeaps(1, &heap);
+	}
 	pStopwatch->Start(g.CommandQueuePtr()->NativePtr(), pNativeGraphicsList);
 
-	sw.Start(206, "RS");
+	sw.Start(210, "RS");
 	{
 		const auto& screen = g.ScreenPtr()->Desc();
 		pScene->viewport = { 0.0f, 0.0f, (float)screen.Width, (float)screen.Height, 0.0f, 1.0f };
@@ -283,9 +334,9 @@ void Draw(Graphics& g, GpuStopwatch* pStopwatch)
 		pScene->scissorRect = { 0, 0, screen.Width, screen.Height };
 		pNativeGraphicsList->RSSetScissorRects(1, &pScene->scissorRect);
 	}
-	sw.Stop(206);
+	sw.Stop(210);
 
-	sw.Start(207, "OM");
+	sw.Start(220, "OM");
 	{
 		const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
 			g.CurrentRenderTargetPtr()->NativePtr(),
@@ -302,29 +353,64 @@ void Draw(Graphics& g, GpuStopwatch* pStopwatch)
 		pNativeGraphicsList->ClearRenderTargetView(handleRTV, clearValue, 0, nullptr);
 		pNativeGraphicsList->ClearDepthStencilView(handleDSV, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 	}
-	sw.Stop(207);
+	sw.Stop(220);
 
-	sw.Start(209, "models");
+	sw.Start(225, "wait_calc");
 	{
-		for (auto pModel : pScene->modelPtrs)
+		pScene->taskQueue.WaitAll();
+	}
+	sw.Stop(225);
+
+	const auto threadCount = pScene->taskQueue.ThreadCount();
+
+	sw.Start(230, "models_cbuffer_update");
+	{
+		auto& models = pScene->modelPtrs;
+		const auto countPerThread = models.size() / threadCount;
+
+		for (auto i = 0; i < threadCount; ++i)
 		{
-			pScene->modelTransform.World = pModel->TransformPtr()->Matrix();
-			pModel->SetTransform(pScene->modelTransform);
+			auto count = countPerThread;
+			if (i == threadCount - 1)
+			{
+				count = pScene->modelPtrs.size() - countPerThread * i;
+			}
+
+			const auto start = countPerThread * i;
+			const auto end = start + count;
+
+			pScene->taskQueue.Enqueue([i, start, end, &models]()
+			{
+				for (auto j = start; j < end; ++j)
+				{
+					auto pModel = models[j];
+					pScene->modelTransforms[i].World = pModel->TransformPtr()->Matrix();
+					pModel->SetTransform(pScene->modelTransforms[i]);
+				}
+			});
 		}
 
-		{
-			auto heap = pScene->cbSrUavHeap.NativePtr();
-			pNativeGraphicsList->SetDescriptorHeaps(1, &heap);
+		//for (auto pModel : pScene->modelPtrs)
+		//{
+		//	pScene->modelTransforms[0].World = pModel->TransformPtr()->Matrix();
+		//	pModel->SetTransform(pScene->modelTransforms[0]);
+		//}
+	}
+	sw.Stop(230);
 
-			for (auto pBundle : pScene->commandLists.GetCommandList("model_bundles"))
-			{
+	sw.Start(240, "models-draw");
+	{
+		for (auto pBundle : pScene->commandLists.GetCommandList("model_bundles"))
+		{
+			//pScene->taskQueue.Enqueue([pNativeGraphicsList, pBundle]()
+			//{
 				pNativeGraphicsList->ExecuteBundle(pBundle->GraphicsList());
-			}
+			//});
 		}
 	}
-	sw.Stop(209);
+	sw.Stop(240);
 
-	sw.Start(210, "wait_render");
+	sw.Start(250, "wait_OM");
 	{
 		const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
 			g.CurrentRenderTargetPtr()->NativePtr(),
@@ -332,33 +418,39 @@ void Draw(Graphics& g, GpuStopwatch* pStopwatch)
 		);
 		pNativeGraphicsList->ResourceBarrier(1, &barrier);
 	}
-	sw.Stop(210);
+	sw.Stop(250);
 
 	pStopwatch->Stop();
 
-	sw.Start(211, "shutdown");
+	sw.Start(260, "close_cmdlist");
 	{
 		pGraphicsList->Close();
 	}
-	sw.Stop(211);
+	sw.Stop(260);
 
-	sw.Start(212, "submit_cmd");
+	sw.Start(265, "wait_models_cbuffer_update");
+	{
+		pScene->taskQueue.WaitAll();
+	}
+	sw.Stop(265);
+
+	sw.Start(270, "submit_cmdlist");
 	{
 		pScene->commandLists.Execute(g.CommandQueuePtr());
 	}
-	sw.Stop(212);
+	sw.Stop(270);
 
-	sw.Start(213, "swap");
+	sw.Start(280, "swap");
 	{
 		g.SwapBuffers();
 	}
-	sw.Stop(213);
+	sw.Stop(280);
 
-	sw.Start(214, "wait_cmd");
+	sw.Start(290, "wait_cmdlist");
 	{
 		g.WaitForCommandExecution();
 	}
-	sw.Stop(214);
+	sw.Stop(290);
 
 	sw.Stop(200);
 	if (sw.DumpAll(200, 60))
@@ -447,6 +539,8 @@ int MainImpl(int, char**)
 	window.Close();
 
 	fbx::Model::Shutdown();
+
+	//graphics.DevicePtr()->ReportLiveObjects();
 
 	return 0;
 }

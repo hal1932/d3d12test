@@ -192,12 +192,14 @@
     <ClInclude Include="lib\ScreenContext.h" />
     <ClInclude Include="lib\Shader.h" />
     <ClInclude Include="lib\ShaderManager.h" />
+    <ClInclude Include="lib\TaskQueue.h" />
     <ClInclude Include="lib\Texture.h" />
     <ClInclude Include="lib\Transform.h" />
     <ClInclude Include="lib\UpdateSubresources.h" />
     <ClInclude Include="lib\Window.h" />
     <ClInclude Include="lib\WindowEvent.h" />
     <ClInclude Include="Model.h" />
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Graphics.cpp" />

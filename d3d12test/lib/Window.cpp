@@ -166,6 +166,7 @@ void Window::MessageLoop(std::function<void()> onIdle)
 		}
 	}
 }
+
 LRESULT Window::WindowProc_(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	switch (msg)

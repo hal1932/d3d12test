@@ -20,6 +20,7 @@
 #include "Camera.h"
 #include "ShaderManager.h"
 #include "CommandListManager.h"
+#include "TaskQueue.h"
 
 #pragma comment(lib, "D3d12.lib")
 #pragma comment(lib, "dxgi.lib")
