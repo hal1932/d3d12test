@@ -67,8 +67,14 @@ HRESULT Material::UpdateResources(FbxGeometry* pGeom, Device* pDevice)
 					mbstowcs_s(&n, path, pTexture->GetFileName(), 256);
 
 					pTexture_ = new Texture();
-					pTexture_->LoadFromFile(path);
-					pTexture_->UpdateResources(pDevice);
+					if (pTexture_->LoadFromFile(path) == S_OK)
+					{
+						pTexture_->UpdateResources(pDevice);
+					}
+					else
+					{
+						SafeDelete(&pTexture_);
+					}
 				}
 			}
 		}
@@ -79,7 +85,11 @@ HRESULT Material::UpdateResources(FbxGeometry* pGeom, Device* pDevice)
 
 HRESULT Material::UpdateSubresources(CommandList* pCommandList, CommandQueue* pCommandQueue)
 {
-	return pTexture_->UpdateSubresource(pCommandList, pCommandQueue);
+	if (pTexture_ != nullptr)
+	{
+		return pTexture_->UpdateSubresource(pCommandList, pCommandQueue);
+	}
+	return S_OK;
 }
 
 Material* Material::CreateReference()

@@ -133,6 +133,7 @@
   <ItemGroup>
     <None Include="assets\SimpleDef.hlsli" />
     <None Include="assets\test_a.fbx" />
+    <None Include="assets\test_amin.fbx" />
     <None Include="assets\test_b.fbx" />
   </ItemGroup>
   <ItemGroup>
@@ -176,9 +177,11 @@
     <ClInclude Include="lib\CommandListManager.h" />
     <ClInclude Include="lib\CommandQueue.h" />
     <ClInclude Include="lib\common.h" />
+    <ClInclude Include="lib\ConstantBuffer.h" />
     <ClInclude Include="lib\CpuStopwatch.h" />
     <ClInclude Include="lib\CpuStopwatchBatch.h" />
     <ClInclude Include="lib\Device.h" />
+    <ClInclude Include="lib\fbxCommon.h" />
     <ClInclude Include="lib\fbxMaterial.h" />
     <ClInclude Include="lib\fbxMesh.h" />
     <ClInclude Include="lib\fbxModel.h" />
@@ -220,6 +223,9 @@
     <ClCompile Include="lib\UpdateSubresource.cpp" />
     <ClCompile Include="lib\Window.cpp" />
     <ClCompile Include="main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="d3d12test1.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -18,11 +18,15 @@ struct PSOutput
 };
 
 
-cbuffer TransformBuffer : register(b0)
+cbuffer Model : register(b0)
 {
 	float4x4 World : packoffset(c0);
-	float4x4 View  : packoffset(c4);
-	float4x4 Proj  : packoffset(c8);
+};
+
+cbuffer Camera : register(b1)
+{
+	float4x4 View  : packoffset(c0);
+	float4x4 Proj  : packoffset(c4);
 };
 
 Texture2D ColorTexture : register(t0);

@@ -3,9 +3,12 @@
 #include "Device.h"
 #include "Resource.h"
 #include "fbxMaterial.h"
+#include "fbxCommon.h"
 #include <vector>
+#include <iostream>
 
 using namespace fbx;
+using namespace fbxsdk;
 
 Mesh::Mesh() {}
 
@@ -23,12 +26,50 @@ Mesh::~Mesh()
 	SafeDelete(&pMaterial_);
 }
 
-HRESULT Mesh::UpdateResources(FbxMesh* pMesh, Device* pDevice)
+HRESULT Mesh::UpdateResources(FbxMesh* pMesh, FbxPose* pBindPose, Device* pDevice)
 {
 	Setup_();
 
 	UpdateVertexResources_(pMesh, pDevice);
 	UpdateIndexResources_(pMesh, pDevice);
+
+	{
+		auto pNode = pMesh->GetNode();
+
+		float v[3];
+		toFloat3(v, pNode->LclScaling.Get());
+		initialPose_.SetScaling(v[0], v[1], v[2]);
+
+		toFloat3Radian(v, pNode->LclRotation.Get());
+		initialPose_.SetRotation(v[0], v[1], v[2]);
+
+		toFloat3(v, pNode->LclTranslation.Get());
+		initialPose_.SetTranslation(v[0], v[1], v[2]);
+
+		initialPose_.UpdateMatrix();
+	}
+
+	for (auto i = 0; i < pMesh->GetDeformerCount(); ++i)
+	{
+		auto pSkin = static_cast<FbxSkin*>(pMesh->GetDeformer(i));
+		std::cout << "deformer: " << i << std::endl;
+		for (auto j = 0; j < pSkin->GetClusterCount(); ++j)
+		{
+			auto pCluster = pSkin->GetCluster(j);
+			std::cout << "cluster: " << j << std::endl;
+			if (!pCluster->GetLink())
+			{
+				continue;
+			}
+
+			const auto indices = pCluster->GetControlPointIndices();
+			const auto weights = pCluster->GetControlPointWeights();
+			for (auto i = 0; i < pCluster->GetControlPointIndicesCount(); ++i)
+			{
+				std::cout << indices[i] << " " << weights[i] << std::endl;
+			}
+		}
+	}
 
 	SafeDelete(&pMaterial_);
 	pMaterial_ = new Material();
@@ -53,6 +94,7 @@ Mesh* Mesh::CreateReference()
 	other->pIndexCount_ = pIndexCount_;
 
 	other->pMaterial_ = pMaterial_->CreateReference();
+	other->initialPose_ = initialPose_;
 
 	return other;
 }
@@ -68,6 +110,31 @@ void Mesh::Setup_()
 
 void Mesh::UpdateVertexResources_(FbxMesh* pMesh, Device* pDevice)
 {
+	const auto skinCount = pMesh->GetDeformerCount(FbxDeformer::eSkin);
+	for (auto i = 0; i < skinCount; ++i)
+	{
+		auto pSkin = static_cast<FbxSkin*>(pMesh->GetDeformer(i, FbxDeformer::eSkin));
+
+		const auto clusterCount = pSkin->GetClusterCount();
+		for (auto j = 0; j < clusterCount; ++j)
+		{
+			auto pCluster = pSkin->GetCluster(i);
+
+			const auto pointCount = pCluster->GetControlPointIndicesCount();
+			auto pIndices = pCluster->GetControlPointIndices();
+			auto pWeights = pCluster->GetControlPointWeights();
+
+			for (auto k = 0; k < pointCount; ++k)
+			{
+				const auto index = pIndices[k];
+				const auto weight = static_cast<float>(pWeights[k]);
+			}
+
+			FbxAMatrix matrix;
+			pCluster->GetTransformLinkMatrix(matrix);
+		}
+	}
+
 	SafeDelete(&pVertexBuffer_);
 	pVertexBuffer_ = new Resource();
 

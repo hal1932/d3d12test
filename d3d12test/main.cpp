@@ -21,7 +21,7 @@ using Microsoft::WRL::ComPtr;
 const int cScreenWidth = 1280;
 const int cScreenHeight = 720;
 const int cBufferCount = 2;
-const int cModelGridSize = 15;
+const int cModelGridSize = 1;
 const int cThreadCount = 3;
 
 struct Scene
@@ -34,7 +34,8 @@ struct Scene
 
 	ResourceViewHeap cbSrUavHeap;
 
-	ModelTransform modelTransforms[cThreadCount];
+	TransformBuffer modelBuffers[cThreadCount];
+	CameraBuffer cameraBuffers[cThreadCount];
 
 	Camera camera;
 	ShaderManager shaders;
@@ -77,12 +78,7 @@ void CreateModelCommand(Graphics& g)
 		pNativeList->SetGraphicsRootSignature(pScene->pRootSignature.Get());
 		pNativeList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-		//std::sort(
-		//	pScene->modelPtrs.begin(), pScene->modelPtrs.end(),
-		//	[](const Model* lhs, const Model* rhs) { return lhs->ShaderHash() < rhs->ShaderHash();});
-
 		ulonglong lastShader = 0ULL;
-		//for (auto pModel : pScene->modelPtrs)
 		for (auto i = start; i < end; ++i)
 		{
 			auto pModel = pScene->modelPtrs[i];
@@ -118,20 +114,18 @@ bool SetupScene(Graphics& g)
 	{
 		pModel = new Model();
 	}
-	Model* rootModels[] = { pScene->modelPtrs[0], pScene->modelPtrs[1] };
+	Model* rootModels[] = { pScene->modelPtrs[0] };
 
-	rootModels[0]->Setup(pDevice, "assets/test_a.fbx");
+	rootModels[0]->Setup(pDevice, "assets/test_anim.fbx");
 	rootModels[0]->UpdateSubresources(pCommandList, g.CommandQueuePtr());
 
-	rootModels[1]->Setup(pDevice, "assets/test_b.fbx");
-	rootModels[1]->UpdateSubresources(pCommandList, g.CommandQueuePtr());
-
-	for (auto i = 2; i < pScene->modelPtrs.size(); ++i)
+	auto meshCount = 0;
+	for (auto pModel : pScene->modelPtrs)
 	{
-		pScene->modelPtrs[i]->SetupAsReference(rootModels[i % 2]);
+		meshCount += pModel->MeshCount();
 	}
-
-	pScene->cbSrUavHeap.CreateHeap(pDevice, { HeapDesc::ViewType::CbSrUaView, static_cast<int>(pScene->modelPtrs.size()) * 2 });
+	pScene->cbSrUavHeap.CreateHeap(
+		pDevice, { HeapDesc::ViewType::CbSrUaView, static_cast<int>(pScene->modelPtrs.size()) * 2 + meshCount });
 
 	for (auto& pModel : pScene->modelPtrs)
 	{
@@ -149,22 +143,24 @@ bool SetupScene(Graphics& g)
 				auto pModel = pScene->modelPtrs[index];
 
 				auto t = pModel->TransformPtr();
-				t->SetScaling(0.1f, 0.1f, 0.1f);
-				t->SetRotation(0.0f, pScene->rotateAngle, 0.0f);
-				t->SetTranslation(-2.0f + i * 0.3f, -2.0f + j * 0.3f, -1.0f + k * 0.3f);
+				//t->SetScaling(0.1f, 0.1f, 0.1f);
+				//t->SetRotation(0.0f, pScene->rotateAngle, 0.0f);
+				//t->SetTranslation(-2.0f + i * 0.3f, -2.0f + j * 0.3f, -1.0f + k * 0.3f);
 				t->UpdateMatrix();
 			}
 		}
 	}
 
 	{
-		CD3DX12_DESCRIPTOR_RANGE1 ranges[2];
+		CD3DX12_DESCRIPTOR_RANGE1 ranges[3];
 		ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
-		ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+		ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1);
+		ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
 
-		CD3DX12_ROOT_PARAMETER1 params[2];
+		CD3DX12_ROOT_PARAMETER1 params[3];
 		params[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_VERTEX);
-		params[1].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_PIXEL);
+		params[1].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_VERTEX);
+		params[2].InitAsDescriptorTable(1, &ranges[2], D3D12_SHADER_VISIBILITY_PIXEL);
 
 		CD3DX12_STATIC_SAMPLER_DESC sampler(0, D3D12_FILTER_MIN_MAG_MIP_LINEAR);
 		sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
@@ -182,9 +178,19 @@ bool SetupScene(Graphics& g)
 		ComPtr<ID3DBlob> pSignature;
 		ComPtr<ID3DBlob> pError;
 
-		ThrowIfFailed(D3DX12SerializeVersionedRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &pSignature, &pError));
+		ThrowIfFailed(
+			D3DX12SerializeVersionedRootSignature(
+				&desc,
+				D3D_ROOT_SIGNATURE_VERSION_1,
+				&pSignature,
+				&pError));
 
-		ThrowIfFailed(pNativeDevice->CreateRootSignature(0, pSignature->GetBufferPointer(), pSignature->GetBufferSize(), IID_PPV_ARGS(&pScene->pRootSignature)));
+		ThrowIfFailed(
+			pNativeDevice->CreateRootSignature(
+				0,
+				pSignature->GetBufferPointer(),
+				pSignature->GetBufferSize(),
+				IID_PPV_ARGS(&pScene->pRootSignature)));
 	}
 
 	{
@@ -216,7 +222,7 @@ bool SetupScene(Graphics& g)
 		desc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 		desc.SampleDesc.Count = 1;
 
-		for (const auto& name : { "Simple", "Simple2" })
+		for (const auto& name : { "Simple2" })
 		{
 			desc.InputLayout = pScene->shaders.InputLayout(name);
 			desc.VS = pScene->shaders.VertexShader(name);
@@ -277,7 +283,7 @@ void Calc()
 				auto pModel = models[j];
 
 				auto t = pModel->TransformPtr();
-				t->SetRotation(0.0f, pScene->rotateAngle, 0.0f);
+				//t->SetRotation(0.0f, pScene->rotateAngle, 0.0f);
 				t->UpdateMatrix();
 			}
 		});
@@ -295,7 +301,7 @@ void Draw(Graphics& g, GpuStopwatch* pStopwatch)
 	{
 		auto& c = pScene->camera;
 
-		c.SetPosition({ 3.0f, 3.0f, -6.0f });
+		c.SetPosition({ 10.0f, 5.0f, -10.0f });
 		c.SetFocus({ 0.0f, 0.0f, 0.0f });
 		c.SetUp({ 0.0f, 1.0f, 0.0f });
 
@@ -308,8 +314,8 @@ void Draw(Graphics& g, GpuStopwatch* pStopwatch)
 
 		for (auto i = 0; i < pScene->taskQueue.ThreadCount(); ++i)
 		{
-			pScene->modelTransforms[i].View = c.View();
-			pScene->modelTransforms[i].Proj = c.Proj();
+			pScene->cameraBuffers[i].View = c.View();
+			pScene->cameraBuffers[i].Proj = c.Proj();
 		}
 	}
 	sw.Stop(201);
@@ -384,8 +390,8 @@ void Draw(Graphics& g, GpuStopwatch* pStopwatch)
 				for (auto j = start; j < end; ++j)
 				{
 					auto pModel = models[j];
-					pScene->modelTransforms[i].World = pModel->TransformPtr()->Matrix();
-					pModel->SetTransform(pScene->modelTransforms[i]);
+					pScene->modelBuffers[i].World = pModel->TransformPtr()->Matrix();
+					pModel->SetTransform(pScene->modelBuffers[i].World, pScene->cameraBuffers[i]);
 				}
 			});
 		}

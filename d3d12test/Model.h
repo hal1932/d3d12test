@@ -3,9 +3,8 @@
 #include <memory>
 
 __declspec(align(256))
-struct ModelTransform
+struct CameraBuffer
 {
-	DirectX::XMMATRIX World;
 	DirectX::XMMATRIX View;
 	DirectX::XMMATRIX Proj;
 };
@@ -18,7 +17,6 @@ public:
 	~Model()
 	{
 		modelPtr_.reset();
-		transformCbvPtr_->Unmap(0);
 	}
 
 	int BufferCount() { return 2; }
@@ -28,8 +26,10 @@ public:
 	fbx::Model& FbxModel() { return *modelPtr_; }
 	const fbx::Model& FbxModel() const { return *modelPtr_; }
 
-	const ulonglong ShaderHash() { return modelPtr_->ShaderHash(); }
-	const ulonglong ShaderHash() const { return modelPtr_->ShaderHash(); }
+	ulonglong ShaderHash() { return modelPtr_->ShaderHash(); }
+	ulonglong ShaderHash() const { return modelPtr_->ShaderHash(); }
+
+	int MeshCount() { return modelPtr_->MeshCount(); }
 
 	void Setup(Device* pDevice, const char* filepath)
 	{
@@ -45,15 +45,20 @@ public:
 	
 	void SetupBuffers(ResourceViewHeap* pHeap)
 	{
-		const CsvDesc csvDesc = { sizeof(ModelTransform), D3D12_TEXTURE_LAYOUT_ROW_MAJOR };
-		transformCbvPtr_ = std::unique_ptr<Resource>(pHeap->CreateConstantBufferView(csvDesc));
+		for (auto i = 0; i < modelPtr_->MeshCount(); ++i)
+		{
+			modelPtr_->MeshPtr(i)->SetupBuffers(pHeap);
+		}
 
-		transformPtr_ = transformCbvPtr_->Map(0);
-		
-		const SrvDesc srvDesc = {
-			D3D12_SRV_DIMENSION_TEXTURE2D,
-			{ modelPtr_->MeshPtr(0)->MaterialPtr()->TexturePtr() } };
-		pTextureSrv_ = pHeap->CreateShaderResourceView(srvDesc);
+		cameraCbv_.Setup(pHeap);
+
+		if (modelPtr_->MeshPtr(0)->MaterialPtr()->TexturePtr() != nullptr)
+		{
+			const SrvDesc srvDesc = {
+				D3D12_SRV_DIMENSION_TEXTURE2D,
+				{ modelPtr_->MeshPtr(0)->MaterialPtr()->TexturePtr() } };
+			pTextureSrv_ = pHeap->CreateShaderResourceView(srvDesc);
+		}
 	}
 
 	void UpdateSubresources(CommandList* pCmdList, CommandQueue* pCmdQueue)
@@ -66,19 +71,30 @@ public:
 		modelPtr_->SetShaderHash(hash);
 	}
 
-	void SetTransform(const ModelTransform& transform)
+	void SetTransform(const DirectX::XMMATRIX& world, const CameraBuffer& camera)
 	{
-		memcpy(transformPtr_, &transform, sizeof(ModelTransform));
+		for (auto i = 0; i < modelPtr_->MeshCount(); ++i)
+		{
+			modelPtr_->MeshPtr(i)->SetTransform(world);
+		}
+
+		cameraCbv_.SetBuffer(camera);
 	}
 
 	void CreateDrawCommand(ID3D12GraphicsCommandList* pNativeList)
 	{
-		pNativeList->SetGraphicsRootDescriptorTable(0, transformCbvPtr_->GpuDescriptorHandle());
-		pNativeList->SetGraphicsRootDescriptorTable(1, pTextureSrv_->GpuDescriptorHandle());
+		pNativeList->SetGraphicsRootDescriptorTable(1, cameraCbv_.GpuDescriptorHandle());
+
+		if (pTextureSrv_ != nullptr)
+		{
+			pNativeList->SetGraphicsRootDescriptorTable(2, pTextureSrv_->GpuDescriptorHandle());
+		}
 
 		for (auto i = 0; i < modelPtr_->MeshCount(); ++i)
 		{
 			const auto pMesh = modelPtr_->MeshPtr(i);
+
+			pMesh->SetRootDescriptorTable(pNativeList, 0);
 
 			auto vbView = pMesh->VertexBuffer()->GetVertexBufferView(sizeof(fbx::Mesh::Vertex));
 			pNativeList->IASetVertexBuffers(0, 1, &vbView);
@@ -93,8 +109,7 @@ public:
 private:
 	std::unique_ptr<fbx::Model> modelPtr_;
 
-	std::unique_ptr<Resource> transformCbvPtr_;
-	void* transformPtr_;
+	ConstantBuffer<CameraBuffer> cameraCbv_;
 	Resource* pTextureSrv_;
 
 	ulonglong shaderHash_;

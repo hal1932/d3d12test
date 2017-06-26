@@ -8,6 +8,7 @@
 #include <vector>
 
 using namespace fbx;
+using namespace fbxsdk;
 
 FbxManager* Model::spFbxManager_ = nullptr;
 
@@ -108,8 +109,6 @@ Model* Model::CreateReference()
 		other->meshPtrs_[i] = meshPtrs_[i]->CreateReference();
 	}
 
-	other->transform_ = transform_.Clone();
-
 	return other;
 }
 
@@ -133,8 +132,9 @@ HRESULT Model::UpdateResourcesRec_(FbxNode* pNode, Device* pDevice)
 			case FbxNodeAttribute::eMesh:
 			{
 				auto pMesh = new Mesh();
-				pMesh->UpdateResources(pNode->GetMesh(), pDevice);
+				pMesh->UpdateResources(pNode->GetMesh(), pScene_->GetPose(0), pDevice);
 				meshPtrs_.push_back(pMesh);
+
 				break;
 			}
 
