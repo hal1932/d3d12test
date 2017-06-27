@@ -40,7 +40,7 @@ public:
 	void Reset();
 
 	void UpdateFrameIndex();
-	void SwapBuffers();
+	void SwapBuffers(int syncInterval);
 
 public: // internal
 	HRESULT GetBackBufferView(UINT index, ID3D12Resource** ppView);

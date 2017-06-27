@@ -85,9 +85,9 @@ void Graphics::SubmitCommand(CommandList* pCommandList)
 	commandQueue_.Submit(pCommandList);
 }
 
-void Graphics::SwapBuffers()
+void Graphics::SwapBuffers(int syncInterval)
 {
-	screen_.SwapBuffers();
+	screen_.SwapBuffers(syncInterval);
 }
 
 HRESULT Graphics::WaitForCommandExecution()

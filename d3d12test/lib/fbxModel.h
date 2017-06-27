@@ -24,9 +24,6 @@ namespace fbx
 		Model();
 		~Model();
 
-		static void Setup();
-		static void Shutdown();
-
 		Transform* TransformPtr() { return &transform_; }
 
 		int MeshCount() { return static_cast<int>(meshPtrs_.size()); }
@@ -47,20 +44,19 @@ namespace fbx
 		Model* CreateReference();
 
 	private:
-		static FbxManager* spFbxManager_;
-
 		bool isReference_ = false;
 
 		tstring name_;
 		FbxScene* pScene_ = nullptr;
+		FbxImporter* pSceneImporter_ = nullptr;
 		std::vector<Mesh*> meshPtrs_;
 
 		Transform transform_;
 
 		ulonglong shaderHash_;
 
-		HRESULT UpdateResourcesRec_(FbxNode* pNode, Device* pDevice);
-		void UpdateMaterialResources_(FbxGeometry* pMesh, Device* pDevice);
+		HRESULT UpdateResourcesRec_(fbxsdk::FbxNode* pNode, Device* pDevice);
+		void UpdateMaterialResources_(fbxsdk::FbxGeometry* pMesh, Device* pDevice);
 	};
 
 }// namespace fbx

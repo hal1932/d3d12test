@@ -4,6 +4,7 @@
 #include "Resource.h"
 #include "fbxMaterial.h"
 #include "fbxCommon.h"
+#include "fbxAnimStack.h"
 #include <vector>
 #include <iostream>
 
@@ -24,6 +25,8 @@ Mesh::~Mesh()
 	}
 
 	SafeDelete(&pMaterial_);
+
+	SafeDeleteArray(&pAnimStacks_);
 }
 
 HRESULT Mesh::UpdateResources(FbxMesh* pMesh, FbxPose* pBindPose, Device* pDevice)
@@ -97,6 +100,19 @@ Mesh* Mesh::CreateReference()
 	other->initialPose_ = initialPose_;
 
 	return other;
+}
+
+void Mesh::LoadAnimStacks(FbxMesh* pMesh, FbxScene* pScene, FbxImporter* pSceneImporter)
+{
+	animStackCount_ = AnimStack::Count(pSceneImporter);
+
+	SafeDeleteArray(&pAnimStacks_);
+	pAnimStacks_ = new AnimStack*[animStackCount_];
+
+	for (auto i = 0; i < animStackCount_; ++i)
+	{
+		pAnimStacks_[i] = AnimStack::Create(pMesh, pScene, pSceneImporter, i);
+	}
 }
 
 void Mesh::Setup_()

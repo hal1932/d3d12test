@@ -19,6 +19,7 @@ class CommandQueue;
 namespace fbx
 {
 	class Material;
+	class AnimStack;
 
 	class Mesh
 	{
@@ -48,6 +49,10 @@ namespace fbx
 
 		Mesh* CreateReference();
 
+		void LoadAnimStacks(FbxMesh* pMesh, FbxScene* pScene, FbxImporter* pSceneImporter);
+		int AnimStackCount() { return animStackCount_; }
+		AnimStack* AnimStackPtr(int index) { return pAnimStacks_[index]; }
+
 		void SetupBuffers(ResourceViewHeap* pHeap)
 		{
 			transformCbv_.Setup(pHeap);
@@ -76,6 +81,9 @@ namespace fbx
 
 		Material* pMaterial_ = nullptr;
 		Transform initialPose_;
+
+		int animStackCount_;
+		AnimStack** pAnimStacks_ = nullptr;
 
 		ConstantBuffer<TransformBuffer> transformCbv_;
 

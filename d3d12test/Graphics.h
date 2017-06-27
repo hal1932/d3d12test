@@ -26,7 +26,7 @@ public:
 	}
 
 	void SubmitCommand(CommandList* pCommandList);
-	void SwapBuffers();
+	void SwapBuffers(int syncInterval);
 	HRESULT WaitForCommandExecution();
 
 private:

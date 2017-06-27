@@ -75,7 +75,8 @@ public:
 	{
 		for (auto i = 0; i < modelPtr_->MeshCount(); ++i)
 		{
-			modelPtr_->MeshPtr(i)->SetTransform(world);
+			auto m = modelPtr_->MeshPtr(i)->AnimStackPtr(0)->NextFrame() * world;
+			modelPtr_->MeshPtr(i)->SetTransform(m);
 		}
 
 		cameraCbv_.SetBuffer(camera);

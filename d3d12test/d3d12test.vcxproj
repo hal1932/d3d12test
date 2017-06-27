@@ -181,6 +181,8 @@
     <ClInclude Include="lib\CpuStopwatch.h" />
     <ClInclude Include="lib\CpuStopwatchBatch.h" />
     <ClInclude Include="lib\Device.h" />
+    <ClInclude Include="lib\fbxAnimation.h" />
+    <ClInclude Include="lib\fbxAnimStack.h" />
     <ClInclude Include="lib\fbxCommon.h" />
     <ClInclude Include="lib\fbxMaterial.h" />
     <ClInclude Include="lib\fbxMesh.h" />
@@ -210,6 +212,7 @@
     <ClCompile Include="lib\CommandListManager.cpp" />
     <ClCompile Include="lib\CommandQueue.cpp" />
     <ClCompile Include="lib\Device.cpp" />
+    <ClCompile Include="lib\fbxCommon.cpp" />
     <ClCompile Include="lib\fbxMaterial.cpp" />
     <ClCompile Include="lib\fbxMesh.cpp" />
     <ClCompile Include="lib\fbxModel.cpp" />
@@ -223,9 +226,6 @@
     <ClCompile Include="lib\UpdateSubresource.cpp" />
     <ClCompile Include="lib\Window.cpp" />
     <ClCompile Include="main.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="d3d12test1.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

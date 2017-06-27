@@ -67,9 +67,9 @@ void ScreenContext::UpdateFrameIndex()
 	frameIndex_ = pSwapChain_->GetCurrentBackBufferIndex();
 }
 
-void ScreenContext::SwapBuffers()
+void ScreenContext::SwapBuffers(int syncInterval)
 {
-	pSwapChain_->Present(0, 0);
+	pSwapChain_->Present(syncInterval, 0);
 }
 
 HRESULT ScreenContext::GetBackBufferView(UINT index, ID3D12Resource** ppView)

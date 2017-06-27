@@ -4,37 +4,19 @@
 #include "Resource.h"
 #include "Texture.h"
 #include "fbxMesh.h"
+#include "fbxCommon.h"
 #include <iostream>
 #include <vector>
 
 using namespace fbx;
 using namespace fbxsdk;
 
-FbxManager* Model::spFbxManager_ = nullptr;
-
-void Model::Setup()
-{
-	Model::Shutdown();
-
-	spFbxManager_ = fbxsdk::FbxManager::Create();
-
-	auto pIOS = FbxIOSettings::Create(spFbxManager_, "IOSROOT");
-	spFbxManager_->SetIOSettings(pIOS);
-
-	auto fbxPath = FbxGetApplicationDirectory();
-	spFbxManager_->LoadPluginsDirectory(fbxPath.Buffer());
-}
-
-void Model::Shutdown()
-{
-	SafeDestroy(&spFbxManager_);
-}
-
 Model::Model() {}
 
 Model::~Model()
 {
 	SafeDeleteSequence(&meshPtrs_);
+	SafeDestroy(&pSceneImporter_);
 
 	if (!isReference_)
 	{
@@ -45,9 +27,9 @@ Model::~Model()
 
 HRESULT Model::LoadFromFile(const char* filepath)
 {
-	auto pSceneImporter = FbxImporter::Create(spFbxManager_, "");
+	auto pSceneImporter = FbxImporter::Create(GetManager(), "");
 
-	auto result = pSceneImporter->Initialize(filepath, -1, spFbxManager_->GetIOSettings());
+	auto result = pSceneImporter->Initialize(filepath, -1, GetManager()->GetIOSettings());
 	if (!result)
 	{
 		auto error = pSceneImporter->GetStatus().GetErrorString();
@@ -58,7 +40,7 @@ HRESULT Model::LoadFromFile(const char* filepath)
 	}
 
 	SafeDestroy(&pScene_);
-	pScene_ = FbxScene::Create(spFbxManager_, "");
+	pScene_ = FbxScene::Create(GetManager(), "");
 
 	result = pSceneImporter->Import(pScene_);
 	if (!result)
@@ -70,7 +52,7 @@ HRESULT Model::LoadFromFile(const char* filepath)
 		return S_FALSE;
 	}
 
-	SafeDestroy(&pSceneImporter);
+	pSceneImporter_ = pSceneImporter;
 
 	return S_OK;
 }
@@ -134,6 +116,8 @@ HRESULT Model::UpdateResourcesRec_(FbxNode* pNode, Device* pDevice)
 				auto pMesh = new Mesh();
 				pMesh->UpdateResources(pNode->GetMesh(), pScene_->GetPose(0), pDevice);
 				meshPtrs_.push_back(pMesh);
+
+				pMesh->LoadAnimStacks(pNode->GetMesh(), pScene_, pSceneImporter_);
 
 				break;
 			}

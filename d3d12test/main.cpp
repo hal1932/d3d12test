@@ -119,6 +119,9 @@ bool SetupScene(Graphics& g)
 	rootModels[0]->Setup(pDevice, "assets/test_anim.fbx");
 	rootModels[0]->UpdateSubresources(pCommandList, g.CommandQueuePtr());
 
+	fbx::Animation anim;
+	anim.LoadFromFile("assets/test_anim.fbx");
+
 	auto meshCount = 0;
 	for (auto pModel : pScene->modelPtrs)
 	{
@@ -448,7 +451,7 @@ void Draw(Graphics& g, GpuStopwatch* pStopwatch)
 
 	sw.Start(280, "swap");
 	{
-		g.SwapBuffers();
+		g.SwapBuffers(1);
 	}
 	sw.Stop(280);
 
@@ -475,7 +478,7 @@ void ShutdownScene()
 
 int MainImpl(int, char**)
 {
-	fbx::Model::Setup();
+	fbx::Setup();
 
 	Window window;
 	window.Setup(GetModuleHandle(nullptr), _TEXT("d3d12test"));
@@ -544,7 +547,7 @@ int MainImpl(int, char**)
 
 	window.Close();
 
-	fbx::Model::Shutdown();
+	fbx::Shutdown();
 
 	//graphics.DevicePtr()->ReportLiveObjects();
 
